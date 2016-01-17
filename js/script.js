@@ -58,7 +58,9 @@
         }, true);
 
         // resource
-        gl3.textures[0] = gl3.create_texture('img/test.jpg', 0, soundLoader);
+        gl3.create_texture_canvas(canvasPoint, 0);
+        gl3.create_texture_canvas(canvasPoint, 1);
+        gl3.create_texture('img/test.jpg', 2, soundLoader);
     };
 
     function canvasDrawPoint(){
@@ -254,6 +256,10 @@
         // texture setting
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, gl3.textures[0].texture);
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, gl3.textures[1].texture);
+        gl.activeTexture(gl.TEXTURE2);
+        gl.bindTexture(gl.TEXTURE_2D, gl3.textures[2].texture);
         gl.activeTexture(gl.TEXTURE4);
         gl.bindTexture(gl.TEXTURE_2D, gl3.textures[4].texture);
         gl.activeTexture(gl.TEXTURE5);
@@ -344,7 +350,7 @@
                 mat4.rotate(mMatrix, radian, axis, mMatrix);
                 mat4.multiply(vpMatrix, mMatrix, mvpMatrix);
                 mat4.inverse(mMatrix, invMatrix);
-                prg.push_shader([mvpMatrix, invMatrix, lightDirection, cameraPosition, centerPoint, ambient, 0]);
+                prg.push_shader([mvpMatrix, invMatrix, lightDirection, cameraPosition, centerPoint, ambient, 1]);
                 gl3.draw_elements(gl.TRIANGLES, torusData.index.length);
             }
 
