@@ -4,4 +4,12 @@ at tdf 2016.
 
 ## todo
 
-* [] task add
+* [x] noise texture
+* [x] heart shader add
+* [ ] particles in the sea
+* [ ]
+* [ ]
+* [ ]
+* [ ]
+* [ ]
+* [ ]

@@ -246,7 +246,7 @@
         var invMatrix = mat4.identity(mat4.create());
 
         // frame buffer
-        var bufferSize = 256;
+        var bufferSize = 512;
         var frameBuffer  = gl3.create_framebuffer(bufferSize, bufferSize, 4);
         var noiseBuffer  = gl3.create_framebuffer(bufferSize, bufferSize, 5);
         var sobelBuffer  = gl3.create_framebuffer(bufferSize, bufferSize, 6);
@@ -350,7 +350,7 @@
                 mat4.rotate(mMatrix, radian, axis, mMatrix);
                 mat4.multiply(vpMatrix, mMatrix, mvpMatrix);
                 mat4.inverse(mMatrix, invMatrix);
-                prg.push_shader([mvpMatrix, invMatrix, lightDirection, cameraPosition, centerPoint, ambient, 1]);
+                prg.push_shader([mvpMatrix, invMatrix, lightDirection, cameraPosition, centerPoint, ambient, 5]);
                 gl3.draw_elements(gl.TRIANGLES, torusData.index.length);
             }
 

@@ -42,11 +42,12 @@ float snoise(vec2 p, vec2 q, vec2 r){
            noise(vec2(p.x + r.x, p.y + r.y)) * (1.0 - q.x) * (1.0 - q.y);
 }
 void main(void){
-    vec2 t = gl_FragCoord.xy;
-    float n = noise(t);
     vec2 map = resolution;
-    // seamless noise
-//    vec2 t = mod(gl_FragCoord.xy, map);
-//    float n = snoise(t, t / map, map);
-    gl_FragColor = vec4(vec3(n), 1.0);
+    vec2 t = mod(gl_FragCoord.xy, map);
+    vec2 u = mod(map - gl_FragCoord.xy, map);
+    vec2 v = mod(gl_FragCoord.xy + gl_FragCoord.yx, map);
+    float r = snoise(t, t / map, map);
+    float g = snoise(u, u / map, map);
+    float b = snoise(v, v / map, map);
+    gl_FragColor = vec4(vec3(r, g, b), 1.0);
 }
