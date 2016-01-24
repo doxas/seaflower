@@ -12,7 +12,7 @@
     // variable ===============================================================
     var canvas, gl, run, mat4, qtn;
     var canvasPoint, canvasGlow;
-    var prg, nPrg, gPrg, sPrg, fPrg;
+    var prg, nPrg, gPrg, sPrg, pPrg, fPrg;
     var gWeight;
     var canvasWidth, canvasHeight;
 
@@ -58,8 +58,8 @@
         }, true);
 
         // resource
-        gl3.create_texture_canvas(canvasPoint, 0);
-        gl3.create_texture_canvas(canvasPoint, 1);
+        gl3.create_texture_canvas(canvasDrawPoint(), 0);
+        gl3.create_texture_canvas(canvasDrawGlow(), 1);
         gl3.create_texture('img/test.jpg', 2, soundLoader);
     };
 
@@ -180,7 +180,18 @@
             shaderLoadCheck
         );
 
-        // sobel program
+        // point program
+        pPrg = gl3.program.create_from_file(
+            'shader/point.vert',
+            'shader/point.frag',
+            ['position', 'texCoord'],
+            [3, 2],
+            ['mvpMatrix', 'vertTexture', 'globalColor', 'texture'],
+            ['matrix4fv', '1i', '4fv', '1i'],
+            shaderLoadCheck
+        );
+
+        // final program
         fPrg = gl3.program.create_from_file(
             'shader/final.vert',
             'shader/final.frag',
@@ -236,6 +247,29 @@
         ];
         var planeVBO = [gl3.create_vbo(planePosition)];
         var planeIBO = gl3.create_ibo(planeIndex);
+
+        // floor
+        var floorPosition = [];
+        var floorTexCoord = [];
+        (function(size, height, interval){
+            var i, j, k, l;
+            var u, v;
+            var scale = size / 2.0;
+            for(i = 0.0; i <= size; ++i){
+                k = (i - scale) * interval;
+                u = i / size;
+                for(j = 0.0; j <= size; ++j){
+                    l = (j - scale) * interval;
+                    v = 1.0 - j / size;
+                    floorPosition.push(k, height, l);
+                    floorTexCoord.push(u, v);
+                }
+            }
+        })(512.0, 0.0, 1.0 / 256.0);
+        var floorVBO = [
+            gl3.create_vbo(floorPosition),
+            gl3.create_vbo(floorTexCoord)
+        ];
 
         // matrix
         var mMatrix = mat4.identity(mat4.create());
@@ -320,15 +354,24 @@
             );
             mat4.vpFromCamera(camera, vMatrix, pMatrix, vpMatrix);
 
-            // torus
-            prg.set_program();
-            prg.set_attribute(torusVBO, torusIBO);
-
             // render to frame buffer
             gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer.framebuffer);
             var clearColor = gl3.util.hsva(count % 360, 0.7, 0.5, 1.0);
             gl3.scene_clear(clearColor, 1.0);
             gl3.scene_view(camera, 0, 0, bufferSize, bufferSize);
+
+            // off screen - point floor
+            pPrg.set_program();
+            pPrg.set_attribute(floorVBO, null);
+            mat4.identity(mMatrix);
+            mat4.scale(mMatrix, [5.0, 1.0, 5.0], mMatrix);
+            mat4.multiply(vpMatrix, mMatrix, mvpMatrix);
+            pPrg.push_shader([vpMatrix, 5, [1.0, 1.0, 1.0, 1.0], 1]);
+            gl3.draw_arrays(gl.POINTS, floorPosition.length / 3);
+
+            // off screen - torus
+            prg.set_program();
+            prg.set_attribute(torusVBO, torusIBO);
 
             // sound data
             gl3.audio.src[0].update = true;
@@ -337,7 +380,7 @@
                 soundData[i] = gl3.audio.src[0].onData[i] / 255.0 + 0.5;
             }
 
-            // off screen
+            // torus
             var radian = gl3.TRI.rad[count % 360];
             var axis = [0.0, 1.0, 1.0];
             for(i = 0; i < 15; i++){

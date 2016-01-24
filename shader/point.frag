@@ -1,11 +1,10 @@
 /* ----------------------------------------------------------------------------
- * final shader
+ * point shader
  * ---------------------------------------------------------------------------- */
 precision mediump float;
 
 uniform vec4 globalColor;
 uniform sampler2D texture;
-varying vec2 vTexCoord;
 void main(){
-    gl_FragColor = texture2D(texture, vTexCoord) * globalColor;
+    gl_FragColor = texture2D(texture, gl_PointCoord.st) * globalColor;
 }
