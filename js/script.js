@@ -25,6 +25,7 @@
     var DEFAULT_CAM_POSITION = [0.0, 5.0, 5.0];
     var DEFAULT_CAM_CENTER   = [0.0, 0.0, 0.0];
     var DEFAULT_CAM_UP       = cameraUpVector(DEFAULT_CAM_POSITION, DEFAULT_CAM_CENTER);
+    var FLOOR_SIZE = 256.0;
 
     // onload =================================================================
     window.onload = function(){
@@ -186,8 +187,8 @@
             'shader/point.frag',
             ['position', 'texCoord'],
             [3, 2],
-            ['mvpMatrix', 'vertTexture', 'globalColor', 'texture'],
-            ['matrix4fv', '1i', '4fv', '1i'],
+            ['mvpMatrix', 'vertTexture', 'time', 'globalColor', 'texture'],
+            ['matrix4fv', '1i', '1f', '4fv', '1i'],
             shaderLoadCheck
         );
 
@@ -265,7 +266,7 @@
                     floorTexCoord.push(u, v);
                 }
             }
-        })(512.0, 0.0, 1.0 / 256.0);
+        })(FLOOR_SIZE, 0.0, 2.0 / FLOOR_SIZE);
         var floorVBO = [
             gl3.create_vbo(floorPosition),
             gl3.create_vbo(floorTexCoord)
@@ -375,7 +376,7 @@
             mat4.identity(mMatrix);
             mat4.scale(mMatrix, [10.0, 1.0, 10.0], mMatrix);
             mat4.multiply(vpMatrix, mMatrix, mvpMatrix);
-            pPrg.push_shader([mvpMatrix, 5, [1.0, 1.0, 1.0, 1.0], 1]);
+            pPrg.push_shader([mvpMatrix, 5, nowTime, [1.0, 1.0, 1.0, 1.0], 1]);
             gl3.draw_arrays(gl.POINTS, floorPosition.length / 3);
 
             // off screen - torus
