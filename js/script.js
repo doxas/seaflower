@@ -22,9 +22,9 @@
     qtn = gl3.qtn;
 
     // const variable =========================================================
-    var DEFAULT_CAM_POSITION = [0.0, 0.0, 5.0];
+    var DEFAULT_CAM_POSITION = [0.0, 5.0, 5.0];
     var DEFAULT_CAM_CENTER   = [0.0, 0.0, 0.0];
-    var DEFAULT_CAM_UP       = [0.0, 1.0, 0.0];
+    var DEFAULT_CAM_UP       = cameraUpVector(DEFAULT_CAM_POSITION, DEFAULT_CAM_CENTER);
 
     // onload =================================================================
     window.onload = function(){
@@ -357,7 +357,7 @@
                 cameraPosition,
                 centerPoint,
                 cameraUpDirection,
-                45, canvasWidth / canvasHeight, 0.1, 10.0
+                60, canvasWidth / canvasHeight, 1.0, 50.0
             );
             mat4.vpFromCamera(camera, vMatrix, pMatrix, vpMatrix);
 
@@ -373,9 +373,9 @@
             pPrg.set_program();
             pPrg.set_attribute(floorVBO, null);
             mat4.identity(mMatrix);
-            mat4.scale(mMatrix, [5.0, 1.0, 5.0], mMatrix);
+            mat4.scale(mMatrix, [10.0, 1.0, 10.0], mMatrix);
             mat4.multiply(vpMatrix, mMatrix, mvpMatrix);
-            pPrg.push_shader([vpMatrix, 5, [1.0, 1.0, 1.0, 1.0], 1]);
+            pPrg.push_shader([mvpMatrix, 5, [1.0, 1.0, 1.0, 1.0], 1]);
             gl3.draw_arrays(gl.POINTS, floorPosition.length / 3);
 
             // off screen - torus
@@ -455,6 +455,15 @@
             weight[i] /= t;
         }
         return weight;
+    }
+
+    function cameraUpVector(pos, center){
+        var n = gl3.vec3.normalize([
+            pos[0] - center[0],
+            pos[1] - center[1],
+            pos[2] - center[2]
+        ]);
+        return gl3.vec3.cross(n, [1.0, 0.0, 0.0]);
     }
 
     function fullscreenRequest(){
