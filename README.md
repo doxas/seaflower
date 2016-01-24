@@ -6,9 +6,9 @@ at tdf 2016.
 
 * [x] noise texture
 * [x] heart shader add
+* [x] particles in the sea floor
+* [x] text rendering
 * [ ] particles in the sea
-* [ ] particles in the sea floor
-* [ ]
 * [ ]
 * [ ]
 * [ ]

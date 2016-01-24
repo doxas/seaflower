@@ -168,7 +168,7 @@
                 setTimeout(fontCheck, 100);
             }else{
                 canvasText = canvasDrawText();
-                textureGenerate();
+                // textureGenerate();
             }
         }
     }
