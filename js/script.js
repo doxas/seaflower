@@ -336,6 +336,13 @@
             nowTime /= 1000;
             count++;
 
+            // sound data
+            gl3.audio.src[0].update = true;
+            var soundData = [];
+            for(i = 0; i < 16; ++i){
+                soundData[i] = gl3.audio.src[0].onData[i] / 255.0 + 0.5;
+            }
+
             // canvas
             canvasWidth   = window.innerWidth;
             canvasHeight  = window.innerHeight;
@@ -361,6 +368,8 @@
             gl3.scene_view(camera, 0, 0, bufferSize, bufferSize);
 
             // off screen - point floor
+            gl.disable(gl.DEPTH_TEST);
+            gl.depthMask(true);
             pPrg.set_program();
             pPrg.set_attribute(floorVBO, null);
             mat4.identity(mMatrix);
@@ -370,15 +379,10 @@
             gl3.draw_arrays(gl.POINTS, floorPosition.length / 3);
 
             // off screen - torus
+            gl.enable(gl.DEPTH_TEST);
+            gl.depthMask(false);
             prg.set_program();
             prg.set_attribute(torusVBO, torusIBO);
-
-            // sound data
-            gl3.audio.src[0].update = true;
-            var soundData = [];
-            for(i = 0; i < 16; ++i){
-                soundData[i] = gl3.audio.src[0].onData[i] / 255.0 + 0.5;
-            }
 
             // torus
             var radian = gl3.TRI.rad[count % 360];
