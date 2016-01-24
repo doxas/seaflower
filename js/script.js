@@ -11,7 +11,7 @@
 
     // variable ===============================================================
     var canvas, gl, run, mat4, qtn;
-    var canvasPoint, canvasGlow;
+    var canvasPoint, canvasGlow, canvasText;
     var prg, nPrg, gPrg, sPrg, pPrg, fPrg;
     var gWeight;
     var canvasWidth, canvasHeight;
@@ -32,6 +32,8 @@
         // canvas draw
         canvasPoint = canvasDrawPoint();
         canvasGlow  = canvasDrawGlow();
+        canvasText  = canvasDrawText();
+        return;
 
         // gl3 initialize
         gl3.initGL('canvas');
@@ -59,9 +61,10 @@
         }, true);
 
         // resource
-        gl3.create_texture_canvas(canvasDrawPoint(), 0);
-        gl3.create_texture_canvas(canvasDrawGlow(), 1);
-        gl3.create_texture('img/test.jpg', 2, soundLoader);
+        gl3.create_texture_canvas(canvasPoint, 0);
+        gl3.create_texture_canvas(canvasGlow, 1);
+        gl3.create_texture_canvas(canvasText, 2);
+        gl3.create_texture('img/test.jpg', 3, soundLoader);
     };
 
     function canvasDrawPoint(){
@@ -121,6 +124,38 @@
         }
         cx.closePath();
         c.id = 'glow';
+        return c;
+    }
+
+    function canvasDrawText(){
+        var i, j, center;
+        var c = document.createElement('canvas');
+        var cx = c.getContext('2d');
+        c.width = c.height = 1024;
+        center = [c.width / 2, c.height / 2];
+        cx.fillStyle = 'white';
+        cx.shadowColor = 'white';
+        cx.shadowBlur = 5;
+        cx.clearRect(0, 0, c.width, c.height);
+
+        cx.font = '64px cursive';
+        cx.textAlign = 'center';
+        cx.textBaseline = 'top';
+        cx.fillText('sea flower', 512, 0, 1024);
+
+        cx.strokeStyle = 'goldenrod';
+        cx.lineWidth = 1;
+        cx.beginPath();
+        cx.moveTo(0, 64);
+        cx.lineTo(1024, 64);
+        cx.closePath();
+        cx.stroke();
+
+        c.id = 'text';
+        c.style.position = 'absolute';
+        c.style.top = '0px';
+        c.style.left = '0px';
+        document.body.appendChild(c);
         return c;
     }
 
