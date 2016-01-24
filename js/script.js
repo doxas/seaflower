@@ -12,6 +12,7 @@
     // variable ===============================================================
     var canvas, gl, run, mat4, qtn;
     var canvasPoint, canvasGlow, canvasText;
+    var canvasFont, canvasFontCtx, canvasFontWidth;
     var prg, nPrg, gPrg, sPrg, pPrg, fPrg;
     var gWeight;
     var canvasWidth, canvasHeight;
@@ -22,19 +23,20 @@
     qtn = gl3.qtn;
 
     // const variable =========================================================
+    var TARGET_FONT = '64px Molle';
     var DEFAULT_CAM_POSITION = [0.0, 5.0, 5.0];
     var DEFAULT_CAM_CENTER   = [0.0, 0.0, 0.0];
     var DEFAULT_CAM_UP       = cameraUpVector(DEFAULT_CAM_POSITION, DEFAULT_CAM_CENTER);
     var FLOOR_SIZE = 256.0;
 
+    // text width
+    canvasFont = document.createElement('canvas');
+    canvasFontCtx = canvasFont.getContext('2d');
+    canvasFontCtx.font = TARGET_FONT;
+    canvasFontWidth = canvasFontCtx.measureText('a').width;
+
     // onload =================================================================
     window.onload = function(){
-        // canvas draw
-        canvasPoint = canvasDrawPoint();
-        canvasGlow  = canvasDrawGlow();
-        canvasText  = canvasDrawText();
-        return;
-
         // gl3 initialize
         gl3.initGL('canvas');
         if(!gl3.ready){console.log('initialize error'); return;}
@@ -60,11 +62,8 @@
             }
         }, true);
 
-        // resource
-        gl3.create_texture_canvas(canvasPoint, 0);
-        gl3.create_texture_canvas(canvasGlow, 1);
-        gl3.create_texture_canvas(canvasText, 2);
-        gl3.create_texture('img/test.jpg', 3, soundLoader);
+        // resource canvas
+        canvasDraw();
     };
 
     function canvasDrawPoint(){
@@ -138,7 +137,7 @@
         cx.shadowBlur = 5;
         cx.clearRect(0, 0, c.width, c.height);
 
-        cx.font = '64px cursive';
+        cx.font = TARGET_FONT;
         cx.textAlign = 'center';
         cx.textBaseline = 'top';
         cx.fillText('sea flower', 512, 0, 1024);
@@ -157,6 +156,28 @@
         c.style.left = '0px';
         document.body.appendChild(c);
         return c;
+    }
+
+    function canvasDraw(){
+        canvasPoint = canvasDrawPoint();
+        canvasGlow = canvasDrawGlow();
+        fontCheck();
+        function fontCheck(){
+            var w = canvasFontCtx.measureText('a').width;
+            if(w === canvasFontWidth){
+                setTimeout(fontCheck, 100);
+            }else{
+                canvasText = canvasDrawText();
+                textureGenerate();
+            }
+        }
+    }
+
+    function textureGenerate(){
+        gl3.create_texture_canvas(canvasPoint, 0);
+        gl3.create_texture_canvas(canvasGlow, 1);
+        gl3.create_texture_canvas(canvasText, 2);
+        gl3.create_texture('img/test.jpg', 3, soundLoader);
     }
 
     function soundLoader(){
