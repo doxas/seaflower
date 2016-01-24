@@ -374,7 +374,7 @@
             pPrg.set_program();
             pPrg.set_attribute(floorVBO, null);
             mat4.identity(mMatrix);
-            mat4.scale(mMatrix, [10.0, 1.0, 10.0], mMatrix);
+            mat4.scale(mMatrix, [25.0, 1.0, 25.0], mMatrix);
             mat4.multiply(vpMatrix, mMatrix, mvpMatrix);
             pPrg.push_shader([mvpMatrix, 5, nowTime, [1.0, 1.0, 1.0, 1.0], 1]);
             gl3.draw_arrays(gl.POINTS, floorPosition.length / 3);
