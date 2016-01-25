@@ -23,7 +23,8 @@
     qtn = gl3.qtn;
 
     // const variable =========================================================
-    var TARGET_FONT = '64px Molle';
+    var TITLE_FONT = '220px Seaweed Script';
+    var OTHER_FONT = '100px Seaweed Script';
     var DEFAULT_CAM_POSITION = [0.0, 5.0, 5.0];
     var DEFAULT_CAM_CENTER   = [0.0, 0.0, 0.0];
     var DEFAULT_CAM_UP       = cameraUpVector(DEFAULT_CAM_POSITION, DEFAULT_CAM_CENTER);
@@ -32,7 +33,7 @@
     // text width
     canvasFont = document.createElement('canvas');
     canvasFontCtx = canvasFont.getContext('2d');
-    canvasFontCtx.font = TARGET_FONT;
+    canvasFontCtx.font = TITLE_FONT;
     canvasFontWidth = canvasFontCtx.measureText('a').width;
 
     // onload =================================================================
@@ -134,27 +135,19 @@
         center = [c.width / 2, c.height / 2];
         cx.fillStyle = 'white';
         cx.shadowColor = 'white';
-        cx.shadowBlur = 5;
+        cx.shadowBlur = 10;
         cx.clearRect(0, 0, c.width, c.height);
 
-        cx.font = TARGET_FONT;
+        cx.font = TITLE_FONT;
         cx.textAlign = 'center';
         cx.textBaseline = 'top';
-        cx.fillText('sea flower', 512, 0, 1024);
-
-        cx.strokeStyle = 'goldenrod';
-        cx.lineWidth = 1;
-        cx.beginPath();
-        cx.moveTo(0, 64);
-        cx.lineTo(1024, 64);
-        cx.closePath();
-        cx.stroke();
-
-        c.id = 'text';
-        c.style.position = 'absolute';
-        c.style.top = '0px';
-        c.style.left = '0px';
-        document.body.appendChild(c);
+        cx.fillText('SeaFlower', 512, 0, 1024);
+        cx.fillText('dom-t', 512, 256, 1024);
+        cx.font = OTHER_FONT;
+        cx.textAlign = 'center';
+        cx.textBaseline = 'middle';
+        cx.fillText('PROGRAM : DOXAS', 512, 640, 1024);
+        cx.fillText('MUSIC : UKA-CHAN', 512, 896, 1024);
         return c;
     }
 
@@ -168,7 +161,7 @@
                 setTimeout(fontCheck, 100);
             }else{
                 canvasText = canvasDrawText();
-                // textureGenerate();
+                textureGenerate();
             }
         }
     }
