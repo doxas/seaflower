@@ -31,6 +31,7 @@
     var FLOOR_SIZE = 256.0;
     var PARTICLE_FLOOR_SIZE = 32.0;
     var PARTICLE_FLOOR_WIDTH = 512.0;
+    var INSTANCE_COUNT = 10;
 
     // text width
     canvasFont = document.createElement('canvas');
@@ -321,18 +322,19 @@
             k = Math.PI; l = k / 2.0;
             p = 0;
             seaPosition.push(0.0, 0.0, 0.0);
-            for(i = 0; i < row; ++i){
-                for(j = 0; j < row; ++j){
+            seaNormal.push(0.0, 0.0, 0.0);
+            for(i = 0; i < col; ++i){
+                for(j = 0; j < col; ++j){
                     m = Math.random(); n = Math.random();
                     o = n * k * 2.0;
                     tr = Math.cos(l + m * k);
                     tx = Math.sin(o) * tr;
                     ty = Math.sin(l + m * k);
-                    tz = Math.abs(Math.cos(o)) * tr;
+                    tz = Math.cos(o) * tr;
                     seaNormal.push(tx, ty, tz);
                     seaPosition.push(tx * corerad, ty * corerad, tz * corerad);
-                    seaIndices.push(p, p + 1); // LINES
                     p++;
+                    seaIndices.push(0, p); // LINES
                 }
             }
             k = Math.PI / col;
@@ -351,33 +353,39 @@
                     seaNormal.push(tx * tr, y, tz * tr);
                     seaPosition.push( x * tr * rad, ty,  z * tr * rad);
                     seaPosition.push(tx * tr * rad, ty, tz * tr * rad);
-                    seaIndices.push(p + 1, p + 2); // LINES
-                    p += 2;
+                    o = seaPosition.length;
+                    seaNormal.push(
+                        -seaNormal[o - 6], y, -seaNormal[o - 4],
+                        -seaNormal[o - 3], y, -seaNormal[o - 1]
+                    );
+                    seaPosition.push(
+                        -seaPosition[o - 6], ty, -seaPosition[o - 4],
+                        -seaPosition[o - 3], ty, -seaPosition[o - 1]
+                    );
+                    seaIndices.push(p + 1, p + 2, p + 3, p + 4); // LINES
+                    p += 4;
                 }
             }
-        })(5.0, 3.0, 32, 8); // need a col mod 2 === 0
+        })(2.0, 1.25, 64, 16); // need a col mod 2 === 0
 
         // instanced array
-        var instanceCount = 100;
+        var instanceCount = INSTANCE_COUNT;
         var instancePositions = [];
         var instanceColors = [];
         var instanceFlags = [];
-        var offsetPosition = 3;
-        var offsetColor = 4;
-        var offsetFlags = 4;
         (function(size){
             var i, j, k, l;
             var r, x, z;
             var a = [];
             r = Math.random;
-            for(i = 0; i < instanceCount; ++i){
+            for(i = 0; i < size; ++i){
                 a[i] = [];
             }
             j = size / 2.0;
             for(i = 0; i < instanceCount; ++i){
-                while(0){
-                    x = math.floor(r() * instanceCount);
-                    z = math.floor(r() * instanceCount);
+                while(1){
+                    x = Math.floor(r() * size);
+                    z = Math.floor(r() * size);
                     if(a[x][z]){
                         continue;
                     }else{
@@ -389,10 +397,19 @@
                 l = r() * 0.5 - 0.25;
                 instancePositions.push(x - j + k, 0.0, z - j + l);
                 var hsv = gl3.util.hsva(r() * 360, 1.0, 1.0, 1.0);
-                instanceColors.push(hsv[0], hsv[1], hsv[2], hsv[3]);
+                instanceColors.push(hsv[0] + 0.05, hsv[1] + 0.05, hsv[2] + 0.05, hsv[3]);
                 instanceFlags.push(r(), r(), r(), r());
             }
         })(FLOOR_SIZE);
+        var seaVBO = [
+            gl3.create_vbo(seaPosition),
+            gl3.create_vbo(seaNormal),
+            gl3.create_vbo(instancePositions),
+            gl3.create_vbo(instanceColors),
+            gl3.create_vbo(instanceFlags)
+        ];
+        var seaExt = [false, false, true, true, true];
+        var seaIBO = gl3.create_ibo(seaIndices);
 
         // floor
         var floorPosition = [];
@@ -447,7 +464,6 @@
         var pMatrix = mat4.identity(mat4.create());
         var vpMatrix = mat4.identity(mat4.create());
         var mvpMatrix = mat4.identity(mat4.create());
-        var invMatrix = mat4.identity(mat4.create());
         var particleMatrix = mat4.identity(mat4.create());
 
         // frame buffer
@@ -499,7 +515,6 @@
         var count = 0;
         var beginTime = Date.now();
         var nowTime = 0;
-        var lightDirection = [1.0, 1.0, 1.0];
 //        gl3.audio.src[0].play();
         render();
         function render(){
@@ -544,68 +559,81 @@
             gl3.scene_clear(clearColor, 1.0);
             gl.viewport(0, 0, bufferSize, bufferSize);
 
+
+
+            // temp
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
+            gl.viewport(0, 0, canvasWidth, canvasHeight);
+
+
+
+
+
             // off screen - point floor
-            pointFloor([25.0, 1.0, 25.0], [1.0, 1.0, 1.0, 1.0]);
+//            pointFloor([25.0, 1.0, 25.0], [1.0, 1.0, 1.0, 1.0]);
 
             // off screen - torus
             gl.enable(gl.DEPTH_TEST);
             gl.depthMask(false);
             prg.set_program();
-            prg.set_attribute(torusVBO, torusIBO);
-            var radian = gl3.TRI.rad[count % 360];
-            var axis = [0.0, 1.0, 1.0];
-            for(i = 0; i < 15; i++){
-                var s = gl3.TRI.sin[i * 24] * soundData[i];
-                var c = gl3.TRI.cos[i * 24] * soundData[i];
-                var offset = [c, s, 0.0];
-                var ambient = gl3.util.hsva(i * 24, 1.0, 1.0, 1.0);
-                mat4.identity(mMatrix);
-                mat4.translate(mMatrix, offset, mMatrix);
-                mat4.rotate(mMatrix, radian, axis, mMatrix);
-                mat4.multiply(vpMatrix, mMatrix, mvpMatrix);
-                mat4.inverse(mMatrix, invMatrix);
-                prg.push_shader([mvpMatrix, invMatrix, lightDirection, cameraPosition, centerPoint, ambient, 5]);
-                gl3.draw_elements(gl.TRIANGLES, torusData.index.length);
-            }
+            set_attribute_angle(seaVBO, prg.attL, prg.attS, seaExt, seaIBO);
+            mat4.identity(mMatrix);
+            mat4.rotate(mMatrix, gl3.TRI.rad[(count % 360)], [0.0, 1.0, 0.0], mMatrix);
+            mat4.multiply(vpMatrix, mMatrix, mvpMatrix);
+            prg.push_shader([mvpMatrix, [1.0, 1.0, 1.0, 1.0]]);
+//            ext.drawArraysInstancedANGLE(gl.POINTS, 0, seaPosition.length / 3, instanceCount);
+            ext.drawElementsInstancedANGLE(gl.LINES, seaIndices.length, gl.UNSIGNED_SHORT, 0, instanceCount);
 
-            // sobel render to gauss buffer
-            gl.bindFramebuffer(gl.FRAMEBUFFER, sobelBuffer.framebuffer);
-            gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
-            gl.viewport(0, 0, bufferSize, bufferSize);
-            sobelRender();
-
-            // horizon gauss render to fBuffer
-            gl.bindFramebuffer(gl.FRAMEBUFFER, hGaussBuffer.framebuffer);
-            gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
-            gl.viewport(0, 0, bufferSize, bufferSize);
-            gaussHorizon();
-
-            // vertical gauss render to fBuffer
-            gl.bindFramebuffer(gl.FRAMEBUFFER, vGaussBuffer.framebuffer);
-            gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
-            gl.viewport(0, 0, bufferSize, bufferSize);
-            gaussVertical();
+//            // sobel render to gauss buffer
+//            gl.bindFramebuffer(gl.FRAMEBUFFER, sobelBuffer.framebuffer);
+//            gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
+//            gl.viewport(0, 0, bufferSize, bufferSize);
+//            sobelRender();
+//
+//            // horizon gauss render to fBuffer
+//            gl.bindFramebuffer(gl.FRAMEBUFFER, hGaussBuffer.framebuffer);
+//            gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
+//            gl.viewport(0, 0, bufferSize, bufferSize);
+//            gaussHorizon();
+//
+//            // vertical gauss render to fBuffer
+//            gl.bindFramebuffer(gl.FRAMEBUFFER, vGaussBuffer.framebuffer);
+//            gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
+//            gl.viewport(0, 0, bufferSize, bufferSize);
+//            gaussVertical();
 
             // final scene
-            fPrg.set_program();
-            fPrg.set_attribute(planeVBO, planeIBO);
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-            gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
-            gl.viewport(0, 0, canvasWidth, canvasHeight);
-            fPrg.push_shader([[1.0, 1.0, 1.0, 1.0], 4]);
-            gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
-            fPrg.push_shader([[1.0, 1.0, 1.0, 0.5], 8]);
-            gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+//            fPrg.set_program();
+//            fPrg.set_attribute(planeVBO, planeIBO);
+//            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+//            gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
+//            gl.viewport(0, 0, canvasWidth, canvasHeight);
+//            fPrg.push_shader([[1.0, 1.0, 1.0, 1.0], 4]);
+//            gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+//            fPrg.push_shader([[1.0, 1.0, 1.0, 0.5], 8]);
+//            gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
 
             // particle wave
-            gl.disable(gl.DEPTH_TEST);
-            gl.depthMask(true);
-            particleWave(64.0, [0.3, 0.8, 1.0, 0.8]);
+//            gl.disable(gl.DEPTH_TEST);
+//            gl.depthMask(true);
+//            particleWaveRender(64.0, [0.3, 0.8, 1.0, 0.8]);
 
             if(run){requestAnimationFrame(render);}
         }
 
         // rendering sub function =============================================
+        function set_attribute_angle(vbo, attL, attS, attExt, ibo){
+            for(var i in vbo){
+                if(attL[i] >= 0){
+                    gl.bindBuffer(gl.ARRAY_BUFFER, vbo[i]);
+                    gl.enableVertexAttribArray(attL[i]);
+                    gl.vertexAttribPointer(attL[i], attS[i], gl.FLOAT, false, 0, 0);
+                    if(attExt[i]){ext.vertexAttribDivisorANGLE(attL[i], 1);}
+                }
+            }
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+        }
         function pointFloor(scale, color){
             gl.disable(gl.DEPTH_TEST);
             gl.depthMask(true);
@@ -617,7 +645,7 @@
             pPrg.push_shader([mvpMatrix, 5, nowTime, color, 0]);
             gl3.draw_arrays(gl.POINTS, floorPosition.length / 3);
         }
-        function particleWave(size, color){
+        function particleWaveRender(size, color){
             ptPrg.set_program();
             ptPrg.set_attribute(particleVBO, null);
             ptPrg.push_shader([particleMatrix, nowTime, PARTICLE_FLOOR_WIDTH / 2.0, size, color, 1]);

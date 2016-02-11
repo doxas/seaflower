@@ -8,6 +8,7 @@ uniform vec4 globalColor;
 varying vec4 vColor;
 void main(){
     vec3 n = normal;
-    gl_Position = mvpMatrix * vec4(position + iPosition, 1.0);
-    vColor = vec4(iColor.rgb, iFlag.x) * globalColor;
+    gl_Position = mvpMatrix * vec4(position + iPosition * 0.05, 1.0);
+    gl_PointSize = 2.0;
+    vColor = vec4(iColor.rgb * iFlag.x, 1.0) * globalColor;
 }
