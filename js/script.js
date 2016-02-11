@@ -10,7 +10,7 @@
     'use strict';
 
     // variable ===============================================================
-    var canvas, gl, run, mat4, qtn;
+    var canvas, gl, run, mat4, qtn, ext;
     var canvasPoint, canvasGlow, canvasText;
     var canvasFont, canvasFontCtx, canvasFontWidth;
     var prg, nPrg, gPrg, sPrg, pPrg, fPrg, ptPrg;
@@ -46,6 +46,13 @@
         canvas = gl3.canvas; gl = gl3.gl;
         canvas.width  = canvasWidth = window.innerWidth;
         canvas.height = canvasHeight = window.innerHeight;
+
+        // ext
+        ext = gl.getExtension('ANGLE_instanced_arrays');
+        if(ext == null){
+            alert('ANGLE_instanced_arrays not supported');
+            return;
+        }
 
         // event
         window.addEventListener('keydown', function(eve){
@@ -190,12 +197,12 @@
     function shaderLoader(){
         // programs
         prg = gl3.program.create_from_file(
-            'shader/phong.vert',
-            'shader/phong.frag',
-            ['position', 'normal', 'color', 'texCoord'],
-            [3, 3, 4, 2],
-            ['mvpMatrix', 'invMatrix', 'lightDirection', 'eyePosition', 'centerPoint', 'ambient', 'texture'],
-            ['matrix4fv', 'matrix4fv', '3fv', '3fv', '3fv', '4fv', '1i'],
+            'shader/base.vert',
+            'shader/base.frag',
+            ['position', 'normal', 'iPosition', 'iColor', 'iFlag'],
+            [3, 3, 3, 4, 4],
+            ['mvpMatrix', 'globalColor'],
+            ['matrix4fv', '4fv'],
             shaderLoadCheck
         );
 
@@ -291,16 +298,6 @@
             -1.0, -2.0, -1.0
         ];
 
-        // torus mesh
-        var torusData = gl3.mesh.torus(64, 64, 0.075, 0.2, [1.0, 1.0, 1.0, 1.0]);
-        var torusVBO = [
-            gl3.create_vbo(torusData.position),
-            gl3.create_vbo(torusData.normal),
-            gl3.create_vbo(torusData.color),
-            gl3.create_vbo(torusData.texCoord)
-        ];
-        var torusIBO = gl3.create_ibo(torusData.index);
-
         // plane mesh
         var planePosition = [
             -1.0,  1.0,  0.0,
@@ -313,6 +310,89 @@
         ];
         var planeVBO = [gl3.create_vbo(planePosition)];
         var planeIBO = gl3.create_ibo(planeIndex);
+
+        // seaflower
+        var seaPosition = [];
+        var seaNormal = [];
+        var seaIndices = [];
+        (function(rad, corerad, row, col){
+            var i, j, k, l, m, n, o, p;
+            var x, y, z, tr, tx, ty, tz;
+            k = Math.PI; l = k / 2.0;
+            p = 0;
+            seaPosition.push(0.0, 0.0, 0.0);
+            for(i = 0; i < row; ++i){
+                for(j = 0; j < row; ++j){
+                    m = Math.random(); n = Math.random();
+                    o = n * k * 2.0;
+                    tr = Math.cos(l + m * k);
+                    tx = Math.sin(o) * tr;
+                    ty = Math.sin(l + m * k);
+                    tz = Math.abs(Math.cos(o)) * tr;
+                    seaNormal.push(tx, ty, tz);
+                    seaPosition.push(tx * corerad, ty * corerad, tz * corerad);
+                    seaIndices.push(p, p + 1); // LINES
+                    p++;
+                }
+            }
+            k = Math.PI / col;
+            l = Math.PI / row;
+            m = Math.PI / 2.0;
+            for(i = 0; i < col; i += 2){
+                x  = Math.cos(k * i);
+                tx = Math.cos(k * (i + 1));
+                z  = Math.sin(k * i);
+                tz = Math.sin(k * (i + 1));
+                for(j = 0; j < row; ++j){
+                    tr = Math.sin(l * j);
+                    y = Math.sin(l * j - m);
+                    ty = y * rad;
+                    seaNormal.push( x * tr, y,  z * tr);
+                    seaNormal.push(tx * tr, y, tz * tr);
+                    seaPosition.push( x * tr * rad, ty,  z * tr * rad);
+                    seaPosition.push(tx * tr * rad, ty, tz * tr * rad);
+                    seaIndices.push(p + 1, p + 2); // LINES
+                    p += 2;
+                }
+            }
+        })(5.0, 3.0, 32, 8); // need a col mod 2 === 0
+
+        // instanced array
+        var instanceCount = 100;
+        var instancePositions = [];
+        var instanceColors = [];
+        var instanceFlags = [];
+        var offsetPosition = 3;
+        var offsetColor = 4;
+        var offsetFlags = 4;
+        (function(size){
+            var i, j, k, l;
+            var r, x, z;
+            var a = [];
+            r = Math.random;
+            for(i = 0; i < instanceCount; ++i){
+                a[i] = [];
+            }
+            j = size / 2.0;
+            for(i = 0; i < instanceCount; ++i){
+                while(0){
+                    x = math.floor(r() * instanceCount);
+                    z = math.floor(r() * instanceCount);
+                    if(a[x][z]){
+                        continue;
+                    }else{
+                        a[x][z] = true;
+                        break;
+                    }
+                }
+                k = r() * 0.5 - 0.25;
+                l = r() * 0.5 - 0.25;
+                instancePositions.push(x - j + k, 0.0, z - j + l);
+                var hsv = gl3.util.hsva(r() * 360, 1.0, 1.0, 1.0);
+                instanceColors.push(hsv[0], hsv[1], hsv[2], hsv[3]);
+                instanceFlags.push(r(), r(), r(), r());
+            }
+        })(FLOOR_SIZE);
 
         // floor
         var floorPosition = [];
