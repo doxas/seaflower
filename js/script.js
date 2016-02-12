@@ -13,7 +13,7 @@
     var canvas, gl, run, mat4, qtn, ext;
     var canvasPoint, canvasGlow, canvasText;
     var canvasFont, canvasFontCtx, canvasFontWidth;
-    var prg, nPrg, gPrg, sPrg, pPrg, fPrg, ptPrg;
+    var prg, nPrg, gPrg, pPrg, lPrg, fPrg, ptPrg;
     var gWeight;
     var canvasWidth, canvasHeight;
 
@@ -28,6 +28,7 @@
     var DEFAULT_CAM_POSITION = [0.1, 5.0, 10.0];
     var DEFAULT_CAM_CENTER   = [0.0, 0.0, 0.0];
     var DEFAULT_CAM_UP       = cameraUpVector(DEFAULT_CAM_POSITION, DEFAULT_CAM_CENTER);
+    var FLOWER_SIZE = 2.0;
     var FLOOR_SIZE = 512.0;
     var PARTICLE_FLOOR_SIZE = 32.0;
     var PARTICLE_FLOOR_WIDTH = 512.0;
@@ -202,8 +203,8 @@
             'shader/base.frag',
             ['position', 'normal', 'iPosition', 'iColor', 'iFlag'],
             [3, 3, 3, 4, 4],
-            ['mvpMatrix', 'globalColor'],
-            ['matrix4fv', '4fv'],
+            ['mMatrix', 'mvpMatrix', 'eyePosition', 'globalColor', 'resolution'],
+            ['matrix4fv', 'matrix4fv', '3fv', '4fv', '2fv'],
             shaderLoadCheck
         );
 
@@ -240,6 +241,17 @@
             shaderLoadCheck
         );
 
+        // layer program
+        lPrg = gl3.program.create_from_file(
+            'shader/layer.vert',
+            'shader/layer.frag',
+            ['position'],
+            [3],
+            ['globalColor'],
+            ['4fv'],
+            shaderLoadCheck
+        );
+
         // particle program
         ptPrg = gl3.program.create_from_file(
             'shader/particle.vert',
@@ -267,6 +279,7 @@
                nPrg.prg != null &&
                gPrg.prg != null &&
                pPrg.prg != null &&
+               lPrg.prg != null &&
                ptPrg.prg != null &&
                fPrg.prg != null
             ){init();}
@@ -344,7 +357,7 @@
                     p += 4;
                 }
             }
-        })(2.0, 1.25, 256, 16); // need a col mod 2 === 0
+        })(FLOWER_SIZE, FLOWER_SIZE * 0.4, 256, 16); // need a col mod 2 === 0
 
         // instanced array
         var instanceCount = INSTANCE_COUNT;
@@ -368,17 +381,19 @@
                         continue;
                     }else{
                         a[x][z] = true;
+                        x -= j;
+                        z -= j;
                         break;
                     }
                 }
-                k = r() * 0.5 - 0.25;
-                l = r() * 0.5 - 0.25;
-                instancePositions.push(x - j + k, 0.0, z - j + l);
-                var hsv = gl3.util.hsva(r() * 360, 1.0, 1.0, 1.0);
+                k = (r() - 0.5) * 2.0;
+                l = (r() - 0.5) * 2.0;
+                instancePositions.push(x * 2.0 * FLOWER_SIZE + k, 0.0, z * 2.0 * FLOWER_SIZE + l);
+                var hsv = gl3.util.hsva(r() * 30 + 180, 1.0, 1.0, 1.0);
                 instanceColors.push(hsv[0] + 0.05, hsv[1] + 0.05, hsv[2] + 0.05, hsv[3]);
                 instanceFlags.push(r(), r(), r(), r());
             }
-        })(FLOOR_SIZE);
+        })(50.0);
         var seaVBO = [
             gl3.create_vbo(seaPosition),
             gl3.create_vbo(seaNormal),
@@ -481,14 +496,8 @@
         gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
 
         // gl flags
-        gl.enable(gl.DEPTH_TEST);
-        gl.depthFunc(gl.LEQUAL);
-        gl.clearDepth(1.0);
-        gl.enable(gl.CULL_FACE);
-        gl.cullFace(gl.BACK);
+        gl.disable(gl.DEPTH_TEST);
         gl.enable(gl.BLEND);
-        gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE, gl.ONE, gl.ONE);
-        // gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE. gl.ONE);
 
         // rendering
         var count = 0;
@@ -526,35 +535,31 @@
 
             // render to frame buffer =========================================
             gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer.framebuffer);
-            var clearColor = [0.0, 0.0, 0.0, 1.0];
-            gl3.scene_clear(clearColor, 1.0);
             gl.viewport(0, 0, bufferSize, bufferSize);
+            var clearColor = [0.0, 0.0, 0.0, 0.5];
+            lPrg.set_program();
+            lPrg.set_attribute(planeVBO, planeIBO);
+            lPrg.push_shader([clearColor]);
+            gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE);
+            gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+            gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE, gl.ONE, gl.ONE);
 
             // point floor wave
-            pointFloor(cameraPosition, nowTime * 0.2, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);
+//            pointFloor(cameraPosition, nowTime * 0.2, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);
 
             // off screen - models
-            gl.enable(gl.DEPTH_TEST);
-            gl.depthMask(false);
             prg.set_program();
             set_attribute_angle(seaVBO, prg.attL, prg.attS, seaExt, seaIBO);
             mat4.identity(mMatrix);
-            mat4.rotate(mMatrix, gl3.TRI.rad[(count % 360)], [0.0, 1.0, 0.0], mMatrix);
             mat4.multiply(vpMatrix, mMatrix, mvpMatrix);
-            prg.push_shader([mvpMatrix, [1.0, 1.0, 1.0, 1.0]]);
-//            ext.drawArraysInstancedANGLE(gl.POINTS, 0, seaPosition.length / 3, instanceCount);
+            prg.push_shader([mMatrix, mvpMatrix, cameraPosition, [1.0, 1.0, 1.0, 1.0], [bufferSize, bufferSize]]);
+            ext.drawArraysInstancedANGLE(gl.POINTS, 0, seaPosition.length / 3, instanceCount);
 //            ext.drawElementsInstancedANGLE(gl.LINES, seaIndices.length, gl.UNSIGNED_SHORT, 0, instanceCount);
 
             // horizon gauss render to fBuffer ================================
-            gl.bindFramebuffer(gl.FRAMEBUFFER, hGaussBuffer.framebuffer);
-            gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
-            gl.viewport(0, 0, bufferSize, bufferSize);
             gaussHorizon();
 
             // vertical gauss render to fBuffer
-            gl.bindFramebuffer(gl.FRAMEBUFFER, vGaussBuffer.framebuffer);
-            gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
-            gl.viewport(0, 0, bufferSize, bufferSize);
             gaussVertical();
 
             // final scene ====================================================
@@ -565,15 +570,10 @@
             gl.viewport(0, 0, canvasWidth, canvasHeight);
             fPrg.push_shader([[1.0, 1.0, 1.0, 1.0], 4]);
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
-            fPrg.push_shader([[1.0, 1.0, 1.0, 0.5], 7]);
+            fPrg.push_shader([[1.5, 1.5, 1.5, 0.5], 7]);
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
 
             // particle wave ==================================================
-//            gl3.mat4.lookAt([0.0, 0.0, PARTICLE_FLOOR_WIDTH / 2.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0], vMatrix);
-//            gl3.mat4.perspective(60, aspect, 0.1, PARTICLE_FLOOR_WIDTH * 2.0, pMatrix);
-//            gl3.mat4.multiply(pMatrix, vMatrix, particleMatrix);
-//            gl.disable(gl.DEPTH_TEST);
-//            gl.depthMask(true);
 //            particleWaveRender(64.0, [0.3, 0.8, 1.0, 0.8]);
 
             gl.flush();
@@ -607,8 +607,8 @@
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
         }
         function pointFloor(eye, speed, scale, color){
-            gl.disable(gl.DEPTH_TEST);
-            gl.depthMask(true);
+//            gl.disable(gl.DEPTH_TEST);
+//            gl.depthMask(true);
             pPrg.set_program();
             pPrg.set_attribute(floorVBO, null);
             mat4.identity(mMatrix);
@@ -617,21 +617,30 @@
             pPrg.push_shader([mMatrix, mvpMatrix, eye, 5, speed, color, 0]);
             gl3.draw_arrays(gl.POINTS, floorPosition.length / 3);
         }
-        function particleWaveRender(size, color){
-            ptPrg.set_program();
-            ptPrg.set_attribute(particleVBO, null);
-            ptPrg.push_shader([particleMatrix, nowTime, PARTICLE_FLOOR_WIDTH / 2.0, size, color, 1]);
-            gl3.draw_arrays(gl.POINTS, particlePosition.length / 3);
-        }
         function gaussHorizon(){
+            gl.bindFramebuffer(gl.FRAMEBUFFER, hGaussBuffer.framebuffer);
+            gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
+            gl.viewport(0, 0, bufferSize, bufferSize);
             gPrg.set_program();
             gPrg.set_attribute(planeVBO, planeIBO);
             gPrg.push_shader([[bufferSize, bufferSize], true, gWeight, 4]);
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
         }
         function gaussVertical(){
+            gl.bindFramebuffer(gl.FRAMEBUFFER, vGaussBuffer.framebuffer);
+            gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
+            gl.viewport(0, 0, bufferSize, bufferSize);
             gPrg.push_shader([[bufferSize, bufferSize], false, gWeight, 6]);
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+        }
+        function particleWaveRender(size, color){
+            gl3.mat4.lookAt([0.0, 0.0, PARTICLE_FLOOR_WIDTH / 2.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0], vMatrix);
+            gl3.mat4.perspective(60, aspect, 0.1, PARTICLE_FLOOR_WIDTH * 2.0, pMatrix);
+            gl3.mat4.multiply(pMatrix, vMatrix, particleMatrix);
+            ptPrg.set_program();
+            ptPrg.set_attribute(particleVBO, null);
+            ptPrg.push_shader([particleMatrix, nowTime, PARTICLE_FLOOR_WIDTH / 2.0, size, color, 1]);
+            gl3.draw_arrays(gl.POINTS, particlePosition.length / 3);
         }
     }
 
