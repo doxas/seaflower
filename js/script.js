@@ -25,13 +25,13 @@
     // const variable =========================================================
     var TITLE_FONT = '220px Seaweed Script';
     var OTHER_FONT = '100px Seaweed Script';
-    var DEFAULT_CAM_POSITION = [0.0, 5.0, 5.0];
+    var DEFAULT_CAM_POSITION = [0.1, 5.0, 10.0];
     var DEFAULT_CAM_CENTER   = [0.0, 0.0, 0.0];
     var DEFAULT_CAM_UP       = cameraUpVector(DEFAULT_CAM_POSITION, DEFAULT_CAM_CENTER);
-    var FLOOR_SIZE = 256.0;
+    var FLOOR_SIZE = 512.0;
     var PARTICLE_FLOOR_SIZE = 32.0;
     var PARTICLE_FLOOR_WIDTH = 512.0;
-    var INSTANCE_COUNT = 10;
+    var INSTANCE_COUNT = 50;
 
     // text width
     canvasFont = document.createElement('canvas');
@@ -229,25 +229,14 @@
             shaderLoadCheck
         );
 
-        // sobel program
-        sPrg = gl3.program.create_from_file(
-            'shader/sobel.vert',
-            'shader/sobel.frag',
-            ['position'],
-            [3],
-            ['resolution', 'hWeight', 'vWeight', 'texture'],
-            ['2fv', '1fv', '1fv', '1i'],
-            shaderLoadCheck
-        );
-
         // point program
         pPrg = gl3.program.create_from_file(
             'shader/point.vert',
             'shader/point.frag',
             ['position', 'texCoord'],
             [3, 2],
-            ['mvpMatrix', 'vertTexture', 'time', 'globalColor', 'texture'],
-            ['matrix4fv', '1i', '1f', '4fv', '1i'],
+            ['mMatrix', 'mvpMatrix', 'eyePosition', 'vertTexture', 'time', 'globalColor', 'texture'],
+            ['matrix4fv', 'matrix4fv', '3fv', '1i', '1f', '4fv', '1i'],
             shaderLoadCheck
         );
 
@@ -277,7 +266,6 @@
             if( prg.prg != null &&
                nPrg.prg != null &&
                gPrg.prg != null &&
-               sPrg.prg != null &&
                pPrg.prg != null &&
                ptPrg.prg != null &&
                fPrg.prg != null
@@ -287,17 +275,7 @@
 
     function init(){
         // application setting
-        gWeight = gaussWeight(10, 100.0);
-        var hWeight = [
-             1.0,  0.0, -1.0,
-             2.0,  0.0, -2.0,
-             1.0,  0.0, -1.0
-        ];
-        var vWeight = [
-             1.0,  2.0,  1.0,
-             0.0,  0.0,  0.0,
-            -1.0, -2.0, -1.0
-        ];
+        gWeight = gaussWeight(10, 50.0);
 
         // plane mesh
         var planePosition = [
@@ -366,7 +344,7 @@
                     p += 4;
                 }
             }
-        })(2.0, 1.25, 64, 16); // need a col mod 2 === 0
+        })(2.0, 1.25, 256, 16); // need a col mod 2 === 0
 
         // instanced array
         var instanceCount = INSTANCE_COUNT;
@@ -466,13 +444,16 @@
         var mvpMatrix = mat4.identity(mat4.create());
         var particleMatrix = mat4.identity(mat4.create());
 
+        // quaternion
+        var qt = qtn.identity(qtn.create());
+        var tqt = qtn.identity(qtn.create());
+
         // frame buffer
         var bufferSize = 512;
         var frameBuffer  = gl3.create_framebuffer(bufferSize, bufferSize, 4);
         var noiseBuffer  = gl3.create_framebuffer(bufferSize, bufferSize, 5);
-        var sobelBuffer  = gl3.create_framebuffer(bufferSize, bufferSize, 6);
-        var hGaussBuffer = gl3.create_framebuffer(bufferSize, bufferSize, 7);
-        var vGaussBuffer = gl3.create_framebuffer(bufferSize, bufferSize, 8);
+        var hGaussBuffer = gl3.create_framebuffer(bufferSize, bufferSize, 6);
+        var vGaussBuffer = gl3.create_framebuffer(bufferSize, bufferSize, 7);
 
         // texture setting
         gl.activeTexture(gl.TEXTURE0);
@@ -489,8 +470,6 @@
         gl.bindTexture(gl.TEXTURE_2D, gl3.textures[6].texture);
         gl.activeTexture(gl.TEXTURE7);
         gl.bindTexture(gl.TEXTURE_2D, gl3.textures[7].texture);
-        gl.activeTexture(gl.TEXTURE8);
-        gl.bindTexture(gl.TEXTURE_2D, gl3.textures[8].texture);
 
         // noise texture
         nPrg.set_program();
@@ -515,7 +494,12 @@
         var count = 0;
         var beginTime = Date.now();
         var nowTime = 0;
+        var cameraPosition = [];
+        var centerPoint = [];
+        var cameraUpDirection = [];
+        var camera;
 //        gl3.audio.src[0].play();
+
         render();
         function render(){
             var i;
@@ -537,14 +521,18 @@
 
             // perspective projection
             var aspect = canvasWidth / canvasHeight;
-            var cameraPosition    = DEFAULT_CAM_POSITION;
-            var centerPoint       = DEFAULT_CAM_CENTER;
-            var cameraUpDirection = DEFAULT_CAM_UP;
-            var camera = gl3.camera.create(
+            cameraPosition    = DEFAULT_CAM_POSITION;
+            centerPoint       = DEFAULT_CAM_CENTER;
+            cameraUpDirection = DEFAULT_CAM_UP;
+            qtn.identity(qt);
+            qtn.rotate(gl3.TRI.rad[1], [0.0, 1.0, 0.0], qt);
+            qtn.toVecIII(DEFAULT_CAM_POSITION, qt, cameraPosition);
+            qtn.toVecIII(DEFAULT_CAM_UP, qt, cameraUpDirection);
+            camera = gl3.camera.create(
                 cameraPosition,
                 centerPoint,
                 cameraUpDirection,
-                60, aspect, 1.0, 100.0
+                60, aspect, 5.0, 100.0
             );
             mat4.vpFromCamera(camera, vMatrix, pMatrix, vpMatrix);
 
@@ -555,23 +543,11 @@
 
             // render to frame buffer
             gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer.framebuffer);
-            var clearColor = gl3.util.hsva(count % 360, 0.7, 0.5, 1.0);
+            var clearColor = [0.0, 0.0, 0.0, 1.0];
             gl3.scene_clear(clearColor, 1.0);
             gl.viewport(0, 0, bufferSize, bufferSize);
 
-
-
-            // temp
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-            gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
-            gl.viewport(0, 0, canvasWidth, canvasHeight);
-
-
-
-
-
-            // off screen - point floor
-//            pointFloor([25.0, 1.0, 25.0], [1.0, 1.0, 1.0, 1.0]);
+            pointFloor(cameraPosition, [50.0, 1.0, 50.0], [1.0, 1.0, 1.0, 1.0]);
 
             // off screen - torus
             gl.enable(gl.DEPTH_TEST);
@@ -583,36 +559,30 @@
             mat4.multiply(vpMatrix, mMatrix, mvpMatrix);
             prg.push_shader([mvpMatrix, [1.0, 1.0, 1.0, 1.0]]);
 //            ext.drawArraysInstancedANGLE(gl.POINTS, 0, seaPosition.length / 3, instanceCount);
-            ext.drawElementsInstancedANGLE(gl.LINES, seaIndices.length, gl.UNSIGNED_SHORT, 0, instanceCount);
+//            ext.drawElementsInstancedANGLE(gl.LINES, seaIndices.length, gl.UNSIGNED_SHORT, 0, instanceCount);
 
-//            // sobel render to gauss buffer
-//            gl.bindFramebuffer(gl.FRAMEBUFFER, sobelBuffer.framebuffer);
-//            gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
-//            gl.viewport(0, 0, bufferSize, bufferSize);
-//            sobelRender();
-//
-//            // horizon gauss render to fBuffer
-//            gl.bindFramebuffer(gl.FRAMEBUFFER, hGaussBuffer.framebuffer);
-//            gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
-//            gl.viewport(0, 0, bufferSize, bufferSize);
-//            gaussHorizon();
-//
-//            // vertical gauss render to fBuffer
-//            gl.bindFramebuffer(gl.FRAMEBUFFER, vGaussBuffer.framebuffer);
-//            gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
-//            gl.viewport(0, 0, bufferSize, bufferSize);
-//            gaussVertical();
+            // horizon gauss render to fBuffer
+            gl.bindFramebuffer(gl.FRAMEBUFFER, hGaussBuffer.framebuffer);
+            gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
+            gl.viewport(0, 0, bufferSize, bufferSize);
+            gaussHorizon();
+
+            // vertical gauss render to fBuffer
+            gl.bindFramebuffer(gl.FRAMEBUFFER, vGaussBuffer.framebuffer);
+            gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
+            gl.viewport(0, 0, bufferSize, bufferSize);
+            gaussVertical();
 
             // final scene
-//            fPrg.set_program();
-//            fPrg.set_attribute(planeVBO, planeIBO);
-//            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-//            gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
-//            gl.viewport(0, 0, canvasWidth, canvasHeight);
-//            fPrg.push_shader([[1.0, 1.0, 1.0, 1.0], 4]);
-//            gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
-//            fPrg.push_shader([[1.0, 1.0, 1.0, 0.5], 8]);
-//            gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+            fPrg.set_program();
+            fPrg.set_attribute(planeVBO, planeIBO);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
+            gl.viewport(0, 0, canvasWidth, canvasHeight);
+            fPrg.push_shader([[1.0, 1.0, 1.0, 1.0], 4]);
+            gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+            fPrg.push_shader([[1.0, 1.0, 1.0, 0.5], 7]);
+            gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
 
             // particle wave
 //            gl.disable(gl.DEPTH_TEST);
@@ -634,7 +604,7 @@
             }
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
         }
-        function pointFloor(scale, color){
+        function pointFloor(eye, scale, color){
             gl.disable(gl.DEPTH_TEST);
             gl.depthMask(true);
             pPrg.set_program();
@@ -642,7 +612,7 @@
             mat4.identity(mMatrix);
             mat4.scale(mMatrix, scale, mMatrix);
             mat4.multiply(vpMatrix, mMatrix, mvpMatrix);
-            pPrg.push_shader([mvpMatrix, 5, nowTime, color, 0]);
+            pPrg.push_shader([mMatrix, mvpMatrix, eye, 5, nowTime, color, 0]);
             gl3.draw_arrays(gl.POINTS, floorPosition.length / 3);
         }
         function particleWaveRender(size, color){
@@ -651,20 +621,14 @@
             ptPrg.push_shader([particleMatrix, nowTime, PARTICLE_FLOOR_WIDTH / 2.0, size, color, 1]);
             gl3.draw_arrays(gl.POINTS, particlePosition.length / 3);
         }
-        function sobelRender(){
-            sPrg.set_program();
-            sPrg.set_attribute(planeVBO, planeIBO);
-            sPrg.push_shader([[bufferSize, bufferSize], hWeight, vWeight, 4]);
-            gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
-        }
         function gaussHorizon(){
             gPrg.set_program();
             gPrg.set_attribute(planeVBO, planeIBO);
-            gPrg.push_shader([[bufferSize, bufferSize], true, gWeight, 6]);
+            gPrg.push_shader([[bufferSize, bufferSize], true, gWeight, 4]);
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
         }
         function gaussVertical(){
-            gPrg.push_shader([[bufferSize, bufferSize], false, gWeight, 7]);
+            gPrg.push_shader([[bufferSize, bufferSize], false, gWeight, 6]);
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
         }
     }
