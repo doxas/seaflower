@@ -25,7 +25,7 @@
     // const variable =========================================================
     var TITLE_FONT = '220px Seaweed Script';
     var OTHER_FONT = '100px Seaweed Script';
-    var DEFAULT_CAM_POSITION = [0.1, 5.0, 10.0];
+    var DEFAULT_CAM_POSITION = [0.0, 15.0, 20.0];
     var DEFAULT_CAM_CENTER   = [0.0, 0.0, 0.0];
     var DEFAULT_CAM_UP       = cameraUpVector(DEFAULT_CAM_POSITION, DEFAULT_CAM_CENTER);
     var FLOWER_SIZE = 2.0;
@@ -236,8 +236,8 @@
             'shader/point.frag',
             ['position', 'texCoord'],
             [3, 2],
-            ['mMatrix', 'mvpMatrix', 'eyePosition', 'vertTexture', 'time', 'globalColor', 'texture'],
-            ['matrix4fv', 'matrix4fv', '3fv', '1i', '1f', '4fv', '1i'],
+            ['mMatrix', 'mvpMatrix', 'eyePosition', 'vertTexture', 'height', 'time', 'globalColor', 'texture'],
+            ['matrix4fv', 'matrix4fv', '3fv', '1i', '1f', '1f', '4fv', '1i'],
             shaderLoadCheck
         );
 
@@ -506,7 +506,7 @@
         var beginTime = Date.now();
         var nowTime = 0;
         var cameraPosition = [];
-        var centerPoint = [];
+        var centerPoint = [0.0, 0.0, 0.0];
         var cameraUpDirection = [];
         var camera;
 //        gl3.audio.src[0].play();
@@ -517,14 +517,10 @@
             updater();
 
             // perspective projection
-            aspect = canvasWidth / canvasHeight;
-            cameraPosition    = DEFAULT_CAM_POSITION;
-            centerPoint       = DEFAULT_CAM_CENTER;
-            cameraUpDirection = DEFAULT_CAM_UP;
             qtn.identity(qt);
-            qtn.rotate(gl3.TRI.rad[1], [0.0, 1.0, 0.0], qt);
-            qtn.toVecIII(DEFAULT_CAM_POSITION, qt, cameraPosition);
-            qtn.toVecIII(DEFAULT_CAM_UP, qt, cameraUpDirection);
+            qtn.rotate((nowTime * 0.1) % gl3.PI2, [0.0, 1.0, 0.0], qt);
+            qtn.toVecIII(cameraPosition, qt, cameraPosition);
+            qtn.toVecIII(cameraUpDirection, qt, cameraUpDirection);
             camera = gl3.camera.create(
                 cameraPosition,
                 centerPoint,
@@ -545,7 +541,7 @@
             gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE, gl.ONE, gl.ONE);
 
             // point floor wave
-//            pointFloor(cameraPosition, nowTime * 0.2, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);
+            pointFloor(cameraPosition, nowTime * 0.2, 10.0, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);
 
             // off screen - models
             prg.set_program();
@@ -553,7 +549,7 @@
             mat4.identity(mMatrix);
             mat4.multiply(vpMatrix, mMatrix, mvpMatrix);
             prg.push_shader([mMatrix, mvpMatrix, cameraPosition, [1.0, 1.0, 1.0, 1.0], [bufferSize, bufferSize]]);
-            ext.drawArraysInstancedANGLE(gl.POINTS, 0, seaPosition.length / 3, instanceCount);
+//            ext.drawArraysInstancedANGLE(gl.POINTS, 0, seaPosition.length / 3, instanceCount);
 //            ext.drawElementsInstancedANGLE(gl.LINES, seaIndices.length, gl.UNSIGNED_SHORT, 0, instanceCount);
 
             // horizon gauss render to fBuffer ================================
@@ -588,12 +584,22 @@
             gl3.audio.src[0].update = true;
             soundData = [];
             for(i = 0; i < 16; ++i){
-                soundData[i] = gl3.audio.src[0].onData[i] / 255.0 + 0.5;
+                soundData[i] = gl3.audio.src[0].onData[i] / 255.0;
             }
             canvasWidth   = window.innerWidth;
             canvasHeight  = window.innerHeight;
             canvas.width  = canvasWidth;
             canvas.height = canvasHeight;
+            aspect = canvasWidth / canvasHeight;
+            cameraPosition[0] = DEFAULT_CAM_POSITION[0];
+            cameraPosition[1] = DEFAULT_CAM_POSITION[1];
+            cameraPosition[2] = DEFAULT_CAM_POSITION[2];
+            centerPoint[0] = DEFAULT_CAM_CENTER[0];
+            centerPoint[1] = DEFAULT_CAM_CENTER[1];
+            centerPoint[2] = DEFAULT_CAM_CENTER[2];
+            cameraUpDirection[0] = DEFAULT_CAM_UP[0];
+            cameraUpDirection[1] = DEFAULT_CAM_UP[1];
+            cameraUpDirection[2] = DEFAULT_CAM_UP[2];
         }
         function set_attribute_angle(vbo, attL, attS, attExt, ibo){
             for(var i in vbo){
@@ -606,7 +612,7 @@
             }
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
         }
-        function pointFloor(eye, speed, scale, color){
+        function pointFloor(eye, speed, height, scale, color){
 //            gl.disable(gl.DEPTH_TEST);
 //            gl.depthMask(true);
             pPrg.set_program();
@@ -614,7 +620,7 @@
             mat4.identity(mMatrix);
             mat4.scale(mMatrix, scale, mMatrix);
             mat4.multiply(vpMatrix, mMatrix, mvpMatrix);
-            pPrg.push_shader([mMatrix, mvpMatrix, eye, 5, speed, color, 0]);
+            pPrg.push_shader([mMatrix, mvpMatrix, eye, 5, height, speed, color, 0]);
             gl3.draw_arrays(gl.POINTS, floorPosition.length / 3);
         }
         function gaussHorizon(){

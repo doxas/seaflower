@@ -4,6 +4,7 @@ uniform mat4 mMatrix;
 uniform mat4 mvpMatrix;
 uniform vec3 eyePosition;
 uniform sampler2D vertTexture;
+uniform float height;
 uniform float time;
 varying float vFog;
 const float start = 0.0;
@@ -16,7 +17,7 @@ float fog(float v){
 }
 void main(){
     float h = texture2D(vertTexture, mod(texCoord + time, 1.0)).r * 2.0 - 1.0;
-    gl_Position = mvpMatrix * vec4(position + vec3(0.0, h * 8.0, 0.0), 1.0);
+    gl_Position = mvpMatrix * vec4(position + vec3(0.0, h * height, 0.0), 1.0);
     gl_PointSize = 1.0;
     vec4 model = mMatrix * vec4(position, 1.0);
     vFog = fog(length(model.xyz - eyePosition));
