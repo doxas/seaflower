@@ -15,7 +15,7 @@ float fog(float v){
     return (sin(f * PI * 2.0 - DEG) + 1.0) * 0.5;
 }
 void main(){
-    float h = texture2D(vertTexture, mod(texCoord + time * 0.1, 1.0)).r * 2.0 - 1.0;
+    float h = texture2D(vertTexture, mod(texCoord + time, 1.0)).r * 2.0 - 1.0;
     gl_Position = mvpMatrix * vec4(position + vec3(0.0, h * 8.0, 0.0), 1.0);
     gl_PointSize = 1.0;
     vec4 model = mMatrix * vec4(position, 1.0);

@@ -492,6 +492,8 @@
 
         // rendering
         var count = 0;
+        var aspect = 1.0;
+        var soundData = [];
         var beginTime = Date.now();
         var nowTime = 0;
         var cameraPosition = [];
@@ -502,25 +504,11 @@
 
         render();
         function render(){
-            var i;
-            nowTime = (Date.now() - beginTime) / 1000;
-            count++;
-
-            // sound data
-            gl3.audio.src[0].update = true;
-            var soundData = [];
-            for(i = 0; i < 16; ++i){
-                soundData[i] = gl3.audio.src[0].onData[i] / 255.0 + 0.5;
-            }
-
-            // canvas
-            canvasWidth   = window.innerWidth;
-            canvasHeight  = window.innerHeight;
-            canvas.width  = canvasWidth;
-            canvas.height = canvasHeight;
+            // frame update
+            updater();
 
             // perspective projection
-            var aspect = canvasWidth / canvasHeight;
+            aspect = canvasWidth / canvasHeight;
             cameraPosition    = DEFAULT_CAM_POSITION;
             centerPoint       = DEFAULT_CAM_CENTER;
             cameraUpDirection = DEFAULT_CAM_UP;
@@ -536,20 +524,16 @@
             );
             mat4.vpFromCamera(camera, vMatrix, pMatrix, vpMatrix);
 
-            // particle matrix
-            gl3.mat4.lookAt([0.0, 0.0, PARTICLE_FLOOR_WIDTH / 2.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0], vMatrix);
-            gl3.mat4.perspective(60, aspect, 0.1, PARTICLE_FLOOR_WIDTH * 2.0, pMatrix);
-            gl3.mat4.multiply(pMatrix, vMatrix, particleMatrix);
-
-            // render to frame buffer
+            // render to frame buffer =========================================
             gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer.framebuffer);
             var clearColor = [0.0, 0.0, 0.0, 1.0];
             gl3.scene_clear(clearColor, 1.0);
             gl.viewport(0, 0, bufferSize, bufferSize);
 
-            pointFloor(cameraPosition, [50.0, 1.0, 50.0], [1.0, 1.0, 1.0, 1.0]);
+            // point floor wave
+            pointFloor(cameraPosition, nowTime * 0.2, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);
 
-            // off screen - torus
+            // off screen - models
             gl.enable(gl.DEPTH_TEST);
             gl.depthMask(false);
             prg.set_program();
@@ -561,7 +545,7 @@
 //            ext.drawArraysInstancedANGLE(gl.POINTS, 0, seaPosition.length / 3, instanceCount);
 //            ext.drawElementsInstancedANGLE(gl.LINES, seaIndices.length, gl.UNSIGNED_SHORT, 0, instanceCount);
 
-            // horizon gauss render to fBuffer
+            // horizon gauss render to fBuffer ================================
             gl.bindFramebuffer(gl.FRAMEBUFFER, hGaussBuffer.framebuffer);
             gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
             gl.viewport(0, 0, bufferSize, bufferSize);
@@ -573,7 +557,7 @@
             gl.viewport(0, 0, bufferSize, bufferSize);
             gaussVertical();
 
-            // final scene
+            // final scene ====================================================
             fPrg.set_program();
             fPrg.set_attribute(planeVBO, planeIBO);
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -584,15 +568,33 @@
             fPrg.push_shader([[1.0, 1.0, 1.0, 0.5], 7]);
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
 
-            // particle wave
+            // particle wave ==================================================
+//            gl3.mat4.lookAt([0.0, 0.0, PARTICLE_FLOOR_WIDTH / 2.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0], vMatrix);
+//            gl3.mat4.perspective(60, aspect, 0.1, PARTICLE_FLOOR_WIDTH * 2.0, pMatrix);
+//            gl3.mat4.multiply(pMatrix, vMatrix, particleMatrix);
 //            gl.disable(gl.DEPTH_TEST);
 //            gl.depthMask(true);
 //            particleWaveRender(64.0, [0.3, 0.8, 1.0, 0.8]);
 
+            gl.flush();
             if(run){requestAnimationFrame(render);}
         }
 
-        // rendering sub function =============================================
+        // sub function =============================================
+        function updater(){
+            var i;
+            count++;
+            nowTime = (Date.now() - beginTime) / 1000;
+            gl3.audio.src[0].update = true;
+            soundData = [];
+            for(i = 0; i < 16; ++i){
+                soundData[i] = gl3.audio.src[0].onData[i] / 255.0 + 0.5;
+            }
+            canvasWidth   = window.innerWidth;
+            canvasHeight  = window.innerHeight;
+            canvas.width  = canvasWidth;
+            canvas.height = canvasHeight;
+        }
         function set_attribute_angle(vbo, attL, attS, attExt, ibo){
             for(var i in vbo){
                 if(attL[i] >= 0){
@@ -604,7 +606,7 @@
             }
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
         }
-        function pointFloor(eye, scale, color){
+        function pointFloor(eye, speed, scale, color){
             gl.disable(gl.DEPTH_TEST);
             gl.depthMask(true);
             pPrg.set_program();
@@ -612,7 +614,7 @@
             mat4.identity(mMatrix);
             mat4.scale(mMatrix, scale, mMatrix);
             mat4.multiply(vpMatrix, mMatrix, mvpMatrix);
-            pPrg.push_shader([mMatrix, mvpMatrix, eye, 5, nowTime, color, 0]);
+            pPrg.push_shader([mMatrix, mvpMatrix, eye, 5, speed, color, 0]);
             gl3.draw_arrays(gl.POINTS, floorPosition.length / 3);
         }
         function particleWaveRender(size, color){
