@@ -234,8 +234,8 @@
         pPrg = gl3.program.create_from_file(
             'shader/point.vert',
             'shader/point.frag',
-            ['position', 'texCoord'],
-            [3, 2],
+            ['position'],
+            [3],
             ['mMatrix', 'mvpMatrix', 'eyePosition', 'vertTexture', 'height', 'time', 'globalColor', 'texture'],
             ['matrix4fv', 'matrix4fv', '3fv', '1i', '1f', '1f', '4fv', '1i'],
             shaderLoadCheck
@@ -532,7 +532,7 @@
             // render to frame buffer =========================================
             gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer.framebuffer);
             gl.viewport(0, 0, bufferSize, bufferSize);
-            var clearColor = [0.0, 0.0, 0.0, 0.5];
+            var clearColor = [0.0, 0.0, 0.0, 1.0];
             lPrg.set_program();
             lPrg.set_attribute(planeVBO, planeIBO);
             lPrg.push_shader([clearColor]);
@@ -541,7 +541,7 @@
             gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE, gl.ONE, gl.ONE);
 
             // point floor wave
-            pointFloor(cameraPosition, nowTime * 0.2, 10.0, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);
+            pointFloor(cameraPosition, nowTime, 10.0, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);
 
             // off screen - models
             prg.set_program();
@@ -620,7 +620,7 @@
             mat4.identity(mMatrix);
             mat4.scale(mMatrix, scale, mMatrix);
             mat4.multiply(vpMatrix, mMatrix, mvpMatrix);
-            pPrg.push_shader([mMatrix, mvpMatrix, eye, 5, height, speed, color, 0]);
+            pPrg.push_shader([mMatrix, mvpMatrix, eye, 5, height, speed / 10, color, 0]);
             gl3.draw_arrays(gl.POINTS, floorPosition.length / 3);
         }
         function gaussHorizon(){

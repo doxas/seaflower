@@ -1,5 +1,4 @@
 attribute vec3 position;
-attribute vec2 texCoord;
 uniform mat4 mMatrix;
 uniform mat4 mvpMatrix;
 uniform vec3 eyePosition;
@@ -16,8 +15,10 @@ float fog(float v){
     return (sin(f * PI * 2.0 - DEG) + 1.0) * 0.5;
 }
 void main(){
-    float h = texture2D(vertTexture, mod(texCoord + time, 1.0)).r * 2.0 - 1.0;
-    gl_Position = mvpMatrix * vec4(position + vec3(0.0, h * height, 0.0), 1.0);
+    vec2 tex = (position.xz + 1.0) * 0.5;
+    float i = (texture2D(vertTexture, mod(tex + time, 1.0)).r * 2.0 - 1.0) * height;
+    float j = (texture2D(vertTexture, mod(tex + time * 1.5, 1.0)).g * 2.0 - 1.0) * height * 0.5;
+    gl_Position = mvpMatrix * vec4(position + vec3(0.0, i + j, 0.0), 1.0);
     gl_PointSize = 1.0;
     vec4 model = mMatrix * vec4(position, 1.0);
     vFog = fog(length(model.xyz - eyePosition));
