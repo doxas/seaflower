@@ -270,8 +270,8 @@
             'shader/final.frag',
             ['position'],
             [3],
-            ['globalColor', 'texture'],
-            ['4fv', '1i'],
+            ['globalColor', 'texture', 'noise', 'mode', 'time'],
+            ['4fv', '1i', '1i', '1i', '1f'],
             shaderLoadCheck
         );
 
@@ -591,11 +591,13 @@
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
             gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
             gl.viewport(0, 0, canvasWidth, canvasHeight);
-            fPrg.push_shader([[1.0, 1.0, 1.0, 1.0], 4]);
+            fPrg.push_shader([[1.0, 1.0, 1.0, 1.0], 4, 5, 0, nowTime]);  // original scene
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
-            fPrg.push_shader([[1.0, 1.0, 1.0, 0.5], 8]);
+            fPrg.push_shader([[1.0, 1.0, 1.0, 0.25], 8, 5, 1, nowTime]); // mosaic layer
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
-            fPrg.push_shader([[1.5, 1.5, 1.5, 0.5], 7]);
+            fPrg.push_shader([[0.1, 0.3, 1.0, 1.0], 5, 5, 2, nowTime]);  // atan layer
+            gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+            fPrg.push_shader([[1.5, 1.5, 1.5, 0.75], 7, 5, 0, nowTime]); // blur layer
             // gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
 
             // particle wave ==================================================
