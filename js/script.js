@@ -236,8 +236,8 @@
             'shader/point.frag',
             ['position'],
             [3],
-            ['mMatrix', 'mvpMatrix', 'eyePosition', 'vertTexture', 'height', 'time', 'globalColor', 'texture'],
-            ['matrix4fv', 'matrix4fv', '3fv', '1i', '1f', '1f', '4fv', '1i'],
+            ['mMatrix', 'mvpMatrix', 'eyePosition', 'vertTexture', 'height', 'time', 'globalColor', 'pointSize'],
+            ['matrix4fv', 'matrix4fv', '3fv', '1i', '1f', '1f', '4fv', '1f'],
             shaderLoadCheck
         );
 
@@ -406,7 +406,6 @@
 
         // floor
         var floorPosition = [];
-        var floorTexCoord = [];
         (function(size, height, interval){
             var i, j, k, l;
             var u, v;
@@ -418,14 +417,10 @@
                     l = (j - scale) * interval;
                     v = 1.0 - j / size;
                     floorPosition.push(k, height, l);
-                    floorTexCoord.push(u, v);
                 }
             }
         })(FLOOR_SIZE, 0.0, 2.0 / FLOOR_SIZE);
-        var floorVBO = [
-            gl3.create_vbo(floorPosition),
-            gl3.create_vbo(floorTexCoord)
-        ];
+        var floorVBO = [gl3.create_vbo(floorPosition)];
 
         // particle
         var particlePosition = [];
@@ -620,7 +615,7 @@
             mat4.identity(mMatrix);
             mat4.scale(mMatrix, scale, mMatrix);
             mat4.multiply(vpMatrix, mMatrix, mvpMatrix);
-            pPrg.push_shader([mMatrix, mvpMatrix, eye, 5, height, speed / 10, color, 0]);
+            pPrg.push_shader([mMatrix, mvpMatrix, eye, 5, height, speed / 10, color, 1.0]);
             gl3.draw_arrays(gl.POINTS, floorPosition.length / 3);
         }
         function gaussHorizon(){
