@@ -29,11 +29,11 @@
     var DEFAULT_CAM_CENTER   = [0.0, 0.0, 0.0];
     var DEFAULT_CAM_UP       = cameraUpVector(DEFAULT_CAM_POSITION, DEFAULT_CAM_CENTER);
     var FLOWER_SIZE = 2.0;
-    var FLOWER_MAP_SIZE = 50.0;
+    var FLOWER_MAP_SIZE = 20.0;
     var FLOOR_SIZE = 512.0;
     var PARTICLE_FLOOR_SIZE = 32.0;
     var PARTICLE_FLOOR_WIDTH = 512.0;
-    var INSTANCE_COUNT = 50;
+    var INSTANCE_COUNT = 100;
 
     // text width
     canvasFont = document.createElement('canvas');
@@ -366,15 +366,17 @@
                         -seaPosition[o - 6], seaPosition[o - 5], -seaPosition[o - 4],
                         -seaPosition[o - 3], seaPosition[o - 2], -seaPosition[o - 1]
                     );
-                    seaColor.push(1.0, 1.0, 1.0, 1.0);
-                    seaColor.push(1.0, 1.0, 1.0, 1.0);
-                    seaColor.push(1.0, 1.0, 1.0, 1.0);
-                    seaColor.push(1.0, 1.0, 1.0, 1.0);
+                    seaColor.push(
+                        1.0, 1.0, 1.0, 1.0,
+                        1.0, 1.0, 1.0, 1.0,
+                        1.0, 1.0, 1.0, 1.0,
+                        1.0, 1.0, 1.0, 1.0
+                    );
                     seaIndices.push(p + 1, p + 2, p + 3, p + 4); // LINES
                     p += 4;
                 }
             }
-        })(FLOWER_SIZE, FLOWER_SIZE * 0.4, 128, 32); // need a col mod 2 === 0
+        })(FLOWER_SIZE, FLOWER_SIZE * 0.4, 64, 32); // need a col mod 2 === 0
 
         // instanced array
         var instanceCount = INSTANCE_COUNT;
@@ -406,8 +408,8 @@
                 k = (r() - 0.5) * 2.0;
                 l = (r() - 0.5) * 2.0;
                 instancePositions.push(x * 2.0 * FLOWER_SIZE + k, 0.0, z * 2.0 * FLOWER_SIZE + l);
-                var hsv = gl3.util.hsva(r() * 20 + 200, 1.0, 1.0, 1.0);
-                instanceColors.push(hsv[0] + 0.05, hsv[1] + 0.05, hsv[2] + 0.05, hsv[3]);
+                var hsv = gl3.util.hsva(r() * 80 + 190, 1.0, 0.5, 1.0);
+                instanceColors.push(hsv[0] + 0.1, hsv[1] + 0.1, hsv[2] + 0.1, hsv[3]);
                 instanceFlags.push(r(), r(), r(), r());
             }
         })(FLOWER_MAP_SIZE);
@@ -479,10 +481,12 @@
 
         // frame buffer
         var bufferSize = 512;
+        var smallBufferSize = 64;
         var frameBuffer  = gl3.create_framebuffer(bufferSize, bufferSize, 4);
         var noiseBuffer  = gl3.create_framebuffer(bufferSize, bufferSize, 5);
         var hGaussBuffer = gl3.create_framebuffer(bufferSize, bufferSize, 6);
         var vGaussBuffer = gl3.create_framebuffer(bufferSize, bufferSize, 7);
+        var smallBuffer  = gl3.create_framebuffer(smallBufferSize, smallBufferSize, 8);
 
         // texture setting
         gl.activeTexture(gl.TEXTURE0);
@@ -491,6 +495,8 @@
         gl.bindTexture(gl.TEXTURE_2D, gl3.textures[1].texture);
         gl.activeTexture(gl.TEXTURE2);
         gl.bindTexture(gl.TEXTURE_2D, gl3.textures[2].texture);
+        gl.activeTexture(gl.TEXTURE3);
+        gl.bindTexture(gl.TEXTURE_2D, gl3.textures[3].texture);
         gl.activeTexture(gl.TEXTURE4);
         gl.bindTexture(gl.TEXTURE_2D, gl3.textures[4].texture);
         gl.activeTexture(gl.TEXTURE5);
@@ -499,6 +505,10 @@
         gl.bindTexture(gl.TEXTURE_2D, gl3.textures[6].texture);
         gl.activeTexture(gl.TEXTURE7);
         gl.bindTexture(gl.TEXTURE_2D, gl3.textures[7].texture);
+        gl.activeTexture(gl.TEXTURE8);
+        gl.bindTexture(gl.TEXTURE_2D, gl3.textures[8].texture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
         // noise texture
         nPrg.set_program();
@@ -543,30 +553,31 @@
             );
             mat4.vpFromCamera(camera, vMatrix, pMatrix, vpMatrix);
 
-            // render to frame buffer =========================================
-            gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer.framebuffer);
-            gl.viewport(0, 0, bufferSize, bufferSize);
-            var clearColor = [0.0, 0.0, 0.0, 1.0];
-            lPrg.set_program();
-            lPrg.set_attribute(planeVBO, planeIBO);
-            lPrg.push_shader([clearColor]);
-            gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE);
-            gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
-            gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE, gl.ONE, gl.ONE);
+            // render to small buffer =========================================
+            gl.bindFramebuffer(gl.FRAMEBUFFER, smallBuffer.framebuffer);
+            gl.viewport(0, 0, smallBufferSize, smallBufferSize);
+
+            // scene clear
+            clearRender(0.8);
 
             // point floor wave
             // pointFloor(cameraPosition, nowTime, 10.0, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);
 
             // off screen - models
-            prg.set_program();
-            set_attribute_angle(seaVBO, prg.attL, prg.attS, seaExt, seaIBO);
-            mat4.identity(mMatrix);
-            mat4.identity(rotateMatrix);
-            mat4.rotate(rotateMatrix, gl3.TRI.rad[count%360], [0.0, 1.0, 0.0], rotateMatrix);
-            mat4.multiply(vpMatrix, mMatrix, mvpMatrix);
-            prg.push_shader([rotateMatrix, mMatrix, mvpMatrix, cameraPosition, nowTime, [1.0, 1.0, 1.0, 1.0], [bufferSize, bufferSize]]);
-            // ext.drawArraysInstancedANGLE(gl.POINTS, 0, seaPosition.length / 3, instanceCount);
-            ext.drawElementsInstancedANGLE(gl.LINES, seaIndices.length, gl.UNSIGNED_SHORT, 0, instanceCount);
+            seaFlower([0.0, -8.0, 0.0], [smallBufferSize, smallBufferSize], false);
+
+            // render to frame buffer =========================================
+            gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer.framebuffer);
+            gl.viewport(0, 0, bufferSize, bufferSize);
+
+            // scene clear
+            clearRender(0.8);
+
+            // point floor wave
+            // pointFloor(cameraPosition, nowTime, 10.0, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);
+
+            // off screen - models
+            seaFlower([0.0, -8.0, 0.0], [bufferSize, bufferSize], false);
 
             // horizon gauss render to fBuffer ================================
             gaussHorizon();
@@ -582,8 +593,10 @@
             gl.viewport(0, 0, canvasWidth, canvasHeight);
             fPrg.push_shader([[1.0, 1.0, 1.0, 1.0], 4]);
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
-            fPrg.push_shader([[1.5, 1.5, 1.5, 0.5], 7]);
+            fPrg.push_shader([[1.0, 1.0, 1.0, 0.5], 8]);
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+            fPrg.push_shader([[1.5, 1.5, 1.5, 0.5], 7]);
+            // gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
 
             // particle wave ==================================================
 //            particleWaveRender(64.0, [0.3, 0.8, 1.0, 0.8]);
@@ -616,6 +629,33 @@
             cameraUpDirection[0] = DEFAULT_CAM_UP[0];
             cameraUpDirection[1] = DEFAULT_CAM_UP[1];
             cameraUpDirection[2] = DEFAULT_CAM_UP[2];
+        }
+        function clearRender(alpha){
+            var clearColor = [0.0, 0.0, 0.0, alpha];
+            lPrg.set_program();
+            lPrg.set_attribute(planeVBO, planeIBO);
+            lPrg.push_shader([clearColor]);
+            gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE);
+            gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+            gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE, gl.ONE, gl.ONE);
+        }
+        function seaFlower(offset, resolution, isPoint){
+            prg.set_program();
+            set_attribute_angle(seaVBO, prg.attL, prg.attS, seaExt, seaIBO);
+            mat4.identity(mMatrix);
+            mat4.translate(mMatrix, offset, mMatrix);
+            mat4.identity(rotateMatrix);
+            mat4.rotate(rotateMatrix, (nowTime * 0.5) % gl3.PI2, [0.0, 1.0, 0.0], rotateMatrix);
+            mat4.multiply(vpMatrix, mMatrix, mvpMatrix);
+            prg.push_shader([rotateMatrix, mMatrix, mvpMatrix, cameraPosition, nowTime, [1.0, 1.0, 1.0, 1.0], resolution]);
+            seaFlowerDraw(isPoint);
+        }
+        function seaFlowerDraw(isPoint){
+            if(isPoint){
+                ext.drawArraysInstancedANGLE(gl.POINTS, 0, seaPosition.length / 3, instanceCount);
+            }else{
+                ext.drawElementsInstancedANGLE(gl.LINES, seaIndices.length, gl.UNSIGNED_SHORT, 0, instanceCount);
+            }
         }
         function set_attribute_angle(vbo, attL, attS, attExt, ibo){
             for(var i in vbo){

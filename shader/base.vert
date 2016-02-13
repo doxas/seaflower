@@ -22,10 +22,13 @@ float fog(float v){
     return (sin(f * PI * 2.0 - DEG) + 1.0) * 0.5;
 }
 void main(){
-    float y = sin(time);
-    float s = (y + 1.0) * 0.5;
-    float d = s * disc.z * 5.0 * (1.0 + iFlag.x);
-    vec3 q = vec3(disc.x, 0.5 - y, disc.y) * vec3(d, disc.z * 2.0, d);
+    vec3 q = vec3(0.0);
+    if(time > 0.0){
+        float y = sin(time * (iFlag.x + 1.0) * 0.5);
+        float s = (y + 1.0) * 0.5;
+        float d = s * disc.z * 5.0 * (1.0 + iFlag.y);
+        q = vec3(disc.x, 0.5 - y, disc.y) * vec3(d, disc.z * 2.0, d);
+    }
     vec3 n = normal;
     vec3 p = (rMatrix * vec4(position + q, 1.0)).xyz + iPosition;
     gl_Position = mvpMatrix * vec4(p, 1.0);
