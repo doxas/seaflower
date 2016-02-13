@@ -29,6 +29,7 @@
     var DEFAULT_CAM_CENTER   = [0.0, 0.0, 0.0];
     var DEFAULT_CAM_UP       = cameraUpVector(DEFAULT_CAM_POSITION, DEFAULT_CAM_CENTER);
     var FLOWER_SIZE = 2.0;
+    var FLOWER_MAP_SIZE = 50.0;
     var FLOOR_SIZE = 512.0;
     var PARTICLE_FLOOR_SIZE = 32.0;
     var PARTICLE_FLOOR_WIDTH = 512.0;
@@ -139,7 +140,7 @@
     }
 
     function canvasDrawText(){
-        var i, j, center;
+        var center;
         var c = document.createElement('canvas');
         var cx = c.getContext('2d');
         c.width = c.height = 1024;
@@ -201,10 +202,10 @@
         prg = gl3.program.create_from_file(
             'shader/base.vert',
             'shader/base.frag',
-            ['position', 'normal', 'iPosition', 'iColor', 'iFlag'],
-            [3, 3, 3, 4, 4],
-            ['mMatrix', 'mvpMatrix', 'eyePosition', 'globalColor', 'resolution'],
-            ['matrix4fv', 'matrix4fv', '3fv', '4fv', '2fv'],
+            ['position', 'normal', 'disc', 'color', 'iPosition', 'iColor', 'iFlag'],
+            [3, 3, 3, 4, 3, 4, 4],
+            ['rMatrix', 'mMatrix', 'mvpMatrix', 'eyePosition', 'time', 'globalColor', 'resolution'],
+            ['matrix4fv', 'matrix4fv', 'matrix4fv', '3fv', '1f', '4fv', '2fv'],
             shaderLoadCheck
         );
 
@@ -306,6 +307,8 @@
         // seaflower
         var seaPosition = [];
         var seaNormal = [];
+        var seaDisc = [];
+        var seaColor = [];
         var seaIndices = [];
         (function(rad, corerad, row, col){
             var i, j, k, l, m, n, o, p;
@@ -314,6 +317,8 @@
             p = 0;
             seaPosition.push(0.0, 0.0, 0.0);
             seaNormal.push(0.0, 0.0, 0.0);
+            seaDisc.push(0.0, 0.0, 0.0);
+            seaColor.push(5.0, 0.2, 0.5, 1.0);
             for(i = 0; i < col; ++i){
                 for(j = 0; j < col; ++j){
                     m = Math.random(); n = Math.random();
@@ -323,7 +328,9 @@
                     ty = Math.sin(l + m * k);
                     tz = Math.cos(o) * tr;
                     seaNormal.push(tx, ty, tz);
+                    seaDisc.push(0.0, 0.0, 0.0);
                     seaPosition.push(tx * corerad, ty * corerad, tz * corerad);
+                    seaColor.push(10.0, 0.1, 0.6, 1.0);
                     p++;
                     seaIndices.push(0, p); // LINES
                 }
@@ -342,22 +349,32 @@
                     ty = y * rad;
                     seaNormal.push( x * tr, y,  z * tr);
                     seaNormal.push(tx * tr, y, tz * tr);
-                    seaPosition.push( x * tr * rad, ty,  z * tr * rad);
-                    seaPosition.push(tx * tr * rad, ty, tz * tr * rad);
+                    seaDisc.push( x,  z, (y + 1.0) / 2.0);
+                    seaDisc.push(tx, tz, (y + 1.0) / 2.0);
+                    seaPosition.push( x * tr * rad, ty * 0.5,  z * tr * rad);
+                    seaPosition.push(tx * tr * rad, ty * 0.5, tz * tr * rad);
                     o = seaPosition.length;
                     seaNormal.push(
                         -seaNormal[o - 6], y, -seaNormal[o - 4],
                         -seaNormal[o - 3], y, -seaNormal[o - 1]
                     );
-                    seaPosition.push(
-                        -seaPosition[o - 6], ty, -seaPosition[o - 4],
-                        -seaPosition[o - 3], ty, -seaPosition[o - 1]
+                    seaDisc.push(
+                        -seaDisc[o - 6], -seaDisc[o - 5], seaDisc[o - 4],
+                        -seaDisc[o - 3], -seaDisc[o - 2], seaDisc[o - 1]
                     );
+                    seaPosition.push(
+                        -seaPosition[o - 6], seaPosition[o - 5], -seaPosition[o - 4],
+                        -seaPosition[o - 3], seaPosition[o - 2], -seaPosition[o - 1]
+                    );
+                    seaColor.push(1.0, 1.0, 1.0, 1.0);
+                    seaColor.push(1.0, 1.0, 1.0, 1.0);
+                    seaColor.push(1.0, 1.0, 1.0, 1.0);
+                    seaColor.push(1.0, 1.0, 1.0, 1.0);
                     seaIndices.push(p + 1, p + 2, p + 3, p + 4); // LINES
                     p += 4;
                 }
             }
-        })(FLOWER_SIZE, FLOWER_SIZE * 0.4, 256, 16); // need a col mod 2 === 0
+        })(FLOWER_SIZE, FLOWER_SIZE * 0.4, 128, 32); // need a col mod 2 === 0
 
         // instanced array
         var instanceCount = INSTANCE_COUNT;
@@ -389,19 +406,21 @@
                 k = (r() - 0.5) * 2.0;
                 l = (r() - 0.5) * 2.0;
                 instancePositions.push(x * 2.0 * FLOWER_SIZE + k, 0.0, z * 2.0 * FLOWER_SIZE + l);
-                var hsv = gl3.util.hsva(r() * 30 + 180, 1.0, 1.0, 1.0);
+                var hsv = gl3.util.hsva(r() * 20 + 200, 1.0, 1.0, 1.0);
                 instanceColors.push(hsv[0] + 0.05, hsv[1] + 0.05, hsv[2] + 0.05, hsv[3]);
                 instanceFlags.push(r(), r(), r(), r());
             }
-        })(50.0);
+        })(FLOWER_MAP_SIZE);
         var seaVBO = [
             gl3.create_vbo(seaPosition),
             gl3.create_vbo(seaNormal),
+            gl3.create_vbo(seaDisc),
+            gl3.create_vbo(seaColor),
             gl3.create_vbo(instancePositions),
             gl3.create_vbo(instanceColors),
             gl3.create_vbo(instanceFlags)
         ];
-        var seaExt = [false, false, true, true, true];
+        var seaExt = [false, false, false, false, true, true, true];
         var seaIBO = gl3.create_ibo(seaIndices);
 
         // floor
@@ -453,10 +472,10 @@
         var vpMatrix = mat4.identity(mat4.create());
         var mvpMatrix = mat4.identity(mat4.create());
         var particleMatrix = mat4.identity(mat4.create());
+        var rotateMatrix = mat4.identity(mat4.create());
 
         // quaternion
         var qt = qtn.identity(qtn.create());
-        var tqt = qtn.identity(qtn.create());
 
         // frame buffer
         var bufferSize = 512;
@@ -536,16 +555,18 @@
             gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE, gl.ONE, gl.ONE);
 
             // point floor wave
-            pointFloor(cameraPosition, nowTime, 10.0, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);
+            // pointFloor(cameraPosition, nowTime, 10.0, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);
 
             // off screen - models
             prg.set_program();
             set_attribute_angle(seaVBO, prg.attL, prg.attS, seaExt, seaIBO);
             mat4.identity(mMatrix);
+            mat4.identity(rotateMatrix);
+            mat4.rotate(rotateMatrix, gl3.TRI.rad[count%360], [0.0, 1.0, 0.0], rotateMatrix);
             mat4.multiply(vpMatrix, mMatrix, mvpMatrix);
-            prg.push_shader([mMatrix, mvpMatrix, cameraPosition, [1.0, 1.0, 1.0, 1.0], [bufferSize, bufferSize]]);
-//            ext.drawArraysInstancedANGLE(gl.POINTS, 0, seaPosition.length / 3, instanceCount);
-//            ext.drawElementsInstancedANGLE(gl.LINES, seaIndices.length, gl.UNSIGNED_SHORT, 0, instanceCount);
+            prg.push_shader([rotateMatrix, mMatrix, mvpMatrix, cameraPosition, nowTime, [1.0, 1.0, 1.0, 1.0], [bufferSize, bufferSize]]);
+            // ext.drawArraysInstancedANGLE(gl.POINTS, 0, seaPosition.length / 3, instanceCount);
+            ext.drawElementsInstancedANGLE(gl.LINES, seaIndices.length, gl.UNSIGNED_SHORT, 0, instanceCount);
 
             // horizon gauss render to fBuffer ================================
             gaussHorizon();

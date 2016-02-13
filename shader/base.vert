@@ -1,11 +1,15 @@
 attribute vec3 position;
 attribute vec3 normal;
+attribute vec3 disc;
+attribute vec4 color;
 attribute vec3 iPosition;
 attribute vec4 iColor;
 attribute vec4 iFlag;
+uniform mat4 rMatrix;
 uniform mat4 mMatrix;
 uniform mat4 mvpMatrix;
 uniform vec3 eyePosition;
+uniform float time;
 uniform vec4 globalColor;
 varying vec4 vColor;
 varying float vFog;
@@ -18,10 +22,15 @@ float fog(float v){
     return (sin(f * PI * 2.0 - DEG) + 1.0) * 0.5;
 }
 void main(){
+    float y = sin(time);
+    float s = (y + 1.0) * 0.5;
+    float d = s * disc.z * 5.0 * (1.0 + iFlag.x);
+    vec3 q = vec3(disc.x, 0.5 - y, disc.y) * vec3(d, disc.z * 2.0, d);
     vec3 n = normal;
-    gl_Position = mvpMatrix * vec4(position + iPosition, 1.0);
+    vec3 p = (rMatrix * vec4(position + q, 1.0)).xyz + iPosition;
+    gl_Position = mvpMatrix * vec4(p, 1.0);
     gl_PointSize = 1.0;
-    vColor = vec4(iColor.rgb * iFlag.x, 1.0) * globalColor;
-    vec4 model = mMatrix * vec4(position + iPosition, 1.0);
+    vColor = vec4(iColor.rgb, 1.0) * globalColor * color;
+    vec4 model = mMatrix * vec4(p, 1.0);
     vFog = fog(length(model.xyz - eyePosition));
 }
