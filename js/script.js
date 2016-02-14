@@ -29,6 +29,7 @@
     var DEFAULT_CAM_CENTER   = [0.0, 0.0, 0.0];
     var DEFAULT_CAM_UP       = cameraUpVector(DEFAULT_CAM_POSITION, DEFAULT_CAM_CENTER);
     var FLOWER_SIZE = 2.0;
+    var ALGAE_SIZE = 2.0;
     var FLOWER_MAP_SIZE = 20.0;
     var FLOOR_SIZE = 512.0;
     var PARTICLE_FLOOR_SIZE = 32.0;
@@ -204,8 +205,8 @@
             'shader/base.frag',
             ['position', 'normal', 'disc', 'color', 'iPosition', 'iColor', 'iFlag'],
             [3, 3, 3, 4, 3, 4, 4],
-            ['rMatrix', 'mMatrix', 'mvpMatrix', 'eyePosition', 'time', 'globalColor', 'resolution'],
-            ['matrix4fv', 'matrix4fv', 'matrix4fv', '3fv', '1f', '4fv', '2fv'],
+            ['rMatrix', 'mMatrix', 'mvpMatrix', 'eyePosition', 'time', 'mode', 'globalColor', 'resolution'],
+            ['matrix4fv', 'matrix4fv', 'matrix4fv', '3fv', '1f', '1i', '4fv', '2fv'],
             shaderLoadCheck
         );
 
@@ -383,23 +384,23 @@
         var instancePositions = [];
         var instanceColors = [];
         var instanceFlags = [];
+        var instanceMap = [];
         (function(size){
             var i, j, k, l;
             var r, x, z;
-            var a = [];
             r = Math.random;
             for(i = 0; i < size; ++i){
-                a[i] = [];
+                instanceMap[i] = [];
             }
             j = size / 2.0;
             for(i = 0; i < instanceCount; ++i){
                 while(1){
                     x = Math.floor(r() * size);
                     z = Math.floor(r() * size);
-                    if(a[x][z]){
+                    if(instanceMap[x][z]){
                         continue;
                     }else{
-                        a[x][z] = true;
+                        instanceMap[x][z] = true;
                         x -= j;
                         z -= j;
                         break;
@@ -424,6 +425,76 @@
         ];
         var seaExt = [false, false, false, false, true, true, true];
         var seaIBO = gl3.create_ibo(seaIndices);
+
+        // algae
+        var algaePosition = [];
+        var algaeNormal = [];
+        var algaeDisc = [];
+        var algaeColor = [];
+        var algaeIndices = [];
+        (function(row, radius, height){
+            var i, j, k, l;
+            var x, y, z, r;
+            j = 1.0 / row;
+            l = height / row;
+            for(i = 0; i < row; ++i){
+                y = j * i;
+                x = Math.cos(y * gl3.PI2);
+                z = Math.sin(y * gl3.PI2);
+                r = Math.sin(y * gl3.PI) * radius;
+                algaePosition.push(0.0, l * i, 0.0);
+                algaeNormal.push(0.0, 0.0, 0.0);
+                algaeDisc.push(0.0, y, 0.0);
+                algaeColor.push(1.0, 1.0, 1.0, 1.0);
+                algaePosition.push(x * r, l * i, z * r, -x * r, l * i, -z * r);
+                algaeNormal.push(x, 0.0, z, -x, 0.0, -z);
+                algaeDisc.push(0.0, y, 0.0, 0.0, y, 0.0);
+                algaeColor.push(1.0, 2.0, 1.0, 1.0, 1.0, 2.0, 1.0, 1.0);
+                k = i * 3;
+                algaeIndices.push(k, k + 1, k, k + 2);
+            }
+        })(32, 0.75, 10.0);
+
+        // instance
+        var iAlgaePositions = [];
+        var iAlgaeColors = [];
+        var iAlgaeFlags = [];
+        (function(size){
+            var i, j, k, l;
+            var r, x, z;
+            r = Math.random;
+            j = size / 2.0;
+            for(i = 0; i < instanceCount; ++i){
+                while(1){
+                    x = Math.floor(r() * size);
+                    z = Math.floor(r() * size);
+                    if(instanceMap[x][z]){
+                        continue;
+                    }else{
+                        instanceMap[x][z] = true;
+                        x -= j;
+                        z -= j;
+                        break;
+                    }
+                }
+                k = (r() - 0.5) * 2.0;
+                l = (r() - 0.5) * 2.0;
+                iAlgaePositions.push(x * 2.0 * ALGAE_SIZE + k, 0.0, z * 2.0 * ALGAE_SIZE + l);
+                var hsv = gl3.util.hsva(r() * 120 + 30, 1.0, 0.5, 1.0);
+                iAlgaeColors.push(hsv[0] + 0.1, hsv[1] + 0.1, hsv[2] + 0.1, hsv[3]);
+                iAlgaeFlags.push(r(), r(), r(), r());
+            }
+        })(FLOWER_MAP_SIZE);
+        var algaeVBO = [
+            gl3.create_vbo(algaePosition),
+            gl3.create_vbo(algaeNormal),
+            gl3.create_vbo(algaeDisc),
+            gl3.create_vbo(algaeColor),
+            gl3.create_vbo(iAlgaePositions),
+            gl3.create_vbo(iAlgaeColors),
+            gl3.create_vbo(iAlgaeFlags)
+        ];
+        var algaeIBO = gl3.create_ibo(algaeIndices);
 
         // floor
         var floorPosition = [];
@@ -564,7 +635,8 @@
             // pointFloor(cameraPosition, nowTime, 10.0, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);
 
             // off screen - models
-            seaFlower([0.0, -8.0, 0.0], [smallBufferSize, smallBufferSize], false);
+            // seaFlower([0.0, -8.0, 0.0], [smallBufferSize, smallBufferSize], false);
+            seaAlgae([0.0, -8.0, 0.0], [smallBufferSize, smallBufferSize], false);
 
             // render to frame buffer =========================================
             gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer.framebuffer);
@@ -577,7 +649,8 @@
             // pointFloor(cameraPosition, nowTime, 10.0, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);
 
             // off screen - models
-            seaFlower([0.0, -8.0, 0.0], [bufferSize, bufferSize], false);
+            // seaFlower([0.0, -8.0, 0.0], [bufferSize, bufferSize], false);
+            seaAlgae([0.0, -8.0, 0.0], [bufferSize, bufferSize], false);
 
             // horizon gauss render to fBuffer ================================
             gaussHorizon();
@@ -593,9 +666,9 @@
             gl.viewport(0, 0, canvasWidth, canvasHeight);
             fPrg.push_shader([[1.0, 1.0, 1.0, 1.0], 4, 5, 0, nowTime]);  // original scene
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
-            fPrg.push_shader([[1.0, 1.0, 1.0, 0.25], 8, 5, 1, nowTime]); // mosaic layer
+            // fPrg.push_shader([[1.0, 1.0, 1.0, 0.25], 8, 5, 1, nowTime]); // mosaic layer
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
-            fPrg.push_shader([[0.1, 0.3, 1.0, 1.0], 5, 5, 2, nowTime]);  // atan layer
+            // fPrg.push_shader([[0.1, 0.3, 1.0, 1.0], 5, 5, 2, nowTime]);  // atan layer
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
             fPrg.push_shader([[1.5, 1.5, 1.5, 0.75], 7, 5, 0, nowTime]); // blur layer
             // gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
@@ -649,14 +722,32 @@
             mat4.identity(rotateMatrix);
             mat4.rotate(rotateMatrix, (nowTime * 0.5) % gl3.PI2, [0.0, 1.0, 0.0], rotateMatrix);
             mat4.multiply(vpMatrix, mMatrix, mvpMatrix);
-            prg.push_shader([rotateMatrix, mMatrix, mvpMatrix, cameraPosition, nowTime, [1.0, 1.0, 1.0, 1.0], resolution]);
+            prg.push_shader([rotateMatrix, mMatrix, mvpMatrix, cameraPosition, nowTime, 0, [1.0, 1.0, 1.0, 1.0], resolution]);
             seaFlowerDraw(isPoint);
+        }
+        function seaAlgae(offset, resolution, isPoint){
+            prg.set_program();
+            set_attribute_angle(algaeVBO, prg.attL, prg.attS, seaExt, algaeIBO);
+            mat4.identity(mMatrix);
+            mat4.translate(mMatrix, offset, mMatrix);
+            mat4.identity(rotateMatrix);
+            mat4.rotate(rotateMatrix, (nowTime * 0.5) % gl3.PI2, [0.0, 1.0, 0.0], rotateMatrix);
+            mat4.multiply(vpMatrix, mMatrix, mvpMatrix);
+            prg.push_shader([rotateMatrix, mMatrix, mvpMatrix, cameraPosition, nowTime, 1, [1.0, 1.0, 1.0, 1.0], resolution]);
+            seaAlgaeDraw(isPoint);
         }
         function seaFlowerDraw(isPoint){
             if(isPoint){
                 ext.drawArraysInstancedANGLE(gl.POINTS, 0, seaPosition.length / 3, instanceCount);
             }else{
                 ext.drawElementsInstancedANGLE(gl.LINES, seaIndices.length, gl.UNSIGNED_SHORT, 0, instanceCount);
+            }
+        }
+        function seaAlgaeDraw(isPoint){
+            if(isPoint){
+                ext.drawArraysInstancedANGLE(gl.POINTS, 0, algaePosition.length / 3, instanceCount);
+            }else{
+                ext.drawElementsInstancedANGLE(gl.LINES, algaeIndices.length, gl.UNSIGNED_SHORT, 0, instanceCount);
             }
         }
         function set_attribute_angle(vbo, attL, attS, attExt, ibo){

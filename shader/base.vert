@@ -10,6 +10,7 @@ uniform mat4 mMatrix;
 uniform mat4 mvpMatrix;
 uniform vec3 eyePosition;
 uniform float time;
+uniform int mode;
 uniform vec4 globalColor;
 varying vec4 vColor;
 varying float vFog;
@@ -23,11 +24,17 @@ float fog(float v){
 }
 void main(){
     vec3 q = vec3(0.0);
-    if(time > 0.0){
-        float y = sin(time * (iFlag.x + 1.0) * 0.5);
-        float s = (y + 1.0) * 0.5;
-        float d = s * disc.z * 5.0 * (1.0 + iFlag.y);
-        q = vec3(disc.x, 0.5 - y, disc.y) * vec3(d, disc.z * 2.0, d);
+    if(mode == 0){
+        if(time > 0.0){
+            float y = sin(time * (iFlag.x + 1.0) * 0.5);
+            float s = (y + 1.0) * 0.5;
+            float d = s * disc.z * 5.0 * (1.0 + iFlag.y);
+            q = vec3(disc.x, 0.5 - y, disc.y) * vec3(d, disc.z * 2.0, d);
+        }
+    }else{
+        if(time > 0.0){
+            q = vec3(0.0);
+        }
     }
     vec3 n = normal;
     vec3 p = (rMatrix * vec4(position + q, 1.0)).xyz + iPosition;
