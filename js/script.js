@@ -449,11 +449,11 @@
                 algaePosition.push(x * r, l * i, z * r, -x * r, l * i, -z * r);
                 algaeNormal.push(x, 0.0, z, -x, 0.0, -z);
                 algaeDisc.push(0.0, y, 0.0, 0.0, y, 0.0);
-                algaeColor.push(1.0, 2.0, 1.0, 1.0, 1.0, 2.0, 1.0, 1.0);
+                algaeColor.push(1.0, 1.5, 1.0, 1.0, 1.0, 1.5, 1.0, 1.0);
                 k = i * 3;
                 algaeIndices.push(k, k + 1, k, k + 2);
             }
-        })(32, 0.75, 10.0);
+        })(96, 0.75, 10.0);
 
         // instance
         var iAlgaePositions = [];
