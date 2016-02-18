@@ -301,8 +301,8 @@
             'shader/gpgpu_render.frag',
             ['index'],
             [1],
-            ['resolution', 'pointScale', 'positionTexture', 'globalColor'],
-            ['1f', '1f', '1i', '4fv'],
+            ['mvpMatrix', 'resolution', 'pointScale', 'positionTexture', 'globalColor'],
+            ['matrix4fv', '1f', '1f', '1i', '4fv'],
             shaderLoadCheck
         );
 
@@ -676,7 +676,7 @@
         gl.bindFramebuffer(gl.FRAMEBUFFER, activePositionBuffer.framebuffer);
         gl3.scene_clear([0.0, 0.0, 0.0, 1.0]);
         gl3.scene_view(null, 0, 0, GPGPU_FRAMEBUFFER_SIZE, GPGPU_FRAMEBUFFER_SIZE);
-        gfPrg.push_shader([0.25, 1]);
+        gfPrg.push_shader([5.0, 1]);
         gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
 
         // gl flags
@@ -803,7 +803,7 @@
             grPrg.set_program();
             grPrg.set_attribute(gpgpuVBO, null);
             grPrg.push_shader([
-                GPGPU_FRAMEBUFFER_SIZE, 1.0,
+                vpMatrix, GPGPU_FRAMEBUFFER_SIZE, 1.0,
                 gpgpuPositionBuffer[activeVertexIndex].textureIndex, [1.0, 0.2, 0.1, 1.0]
             ]);
             gl3.draw_arrays(gl.POINTS, gpgpuIndex.length);
