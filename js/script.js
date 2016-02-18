@@ -291,7 +291,7 @@
             ['position'],
             [3],
             ['mode', 'resolution', 'target', 'power', 'speed', 'velocityTexture', 'positionTexture'],
-            ['1i', '2fv', '3fv', '1f', '1f', '1i', '1i'],
+            ['1i', '1f', '3fv', '1f', '1f', '1i', '1i'],
             shaderLoadCheck
         );
 
@@ -689,6 +689,7 @@
         var soundData = [];
         var beginTime = Date.now();
         var nowTime = 0;
+        var gpuUpdateFlag = false;
         var cameraPosition = [];
         var centerPoint = [0.0, 0.0, 0.0];
         var cameraUpDirection = [];
@@ -721,7 +722,7 @@
             clearRender(0.8);
 
             // scene render to small buffer
-            sceneRender(SMALL_FRAMEBUFFER_SIZE);
+            sceneRender(SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
 
             // render to frame buffer =========================================
             gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer.framebuffer);
@@ -731,7 +732,7 @@
             clearRender(0.8);
 
             // scene render to framebuffer
-            sceneRender(FRAMEBUFFER_SIZE);
+            sceneRender(FRAMEBUFFER_SIZE, null, null);
 
             // horizon gauss render to fBuffer ================================
             gaussHorizon();
@@ -766,6 +767,7 @@
             var i;
             count++;
             nowTime = (Date.now() - beginTime) / 1000;
+            gpuUpdateFlag = false;
             gl3.audio.src[0].update = true;
             soundData = [];
             for(i = 0; i < 16; ++i){
@@ -799,16 +801,23 @@
             passiveVertexIndex = activeVertexIndex;
             return activeVertexIndex === 0 ? 1 : 0;
         }
-        function gpgpuRender(){
+        function gpgpuRender(target, power, speed, globalColor, nowBindBuffer, nowViewport){
+            if(!gpuUpdateFlag){
+                gpgpuUpdate(target, power, speed);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, nowBindBuffer);
+                gl.viewport(0, 0, nowViewport, nowViewport);
+            }
             grPrg.set_program();
             grPrg.set_attribute(gpgpuVBO, null);
             grPrg.push_shader([
                 vpMatrix, GPGPU_FRAMEBUFFER_SIZE, 1.0,
-                gpgpuPositionBuffer[activeVertexIndex].textureIndex, [1.0, 0.2, 0.1, 1.0]
+                gpgpuPositionBuffer[activeVertexIndex].textureIndex, globalColor
             ]);
             gl3.draw_arrays(gl.POINTS, gpgpuIndex.length);
         }
         function gpgpuUpdate(target, power, speed){
+            gpuUpdateFlag = true;
+            gl.viewport(0, 0, GPGPU_FRAMEBUFFER_SIZE, GPGPU_FRAMEBUFFER_SIZE);
             activeVertexIndex = activeVertexSwitcher();
             activeVelocityBuffer = gpgpuVelocityBuffer[activeVertexIndex].buffer;
             activePositionBuffer = gpgpuPositionBuffer[activeVertexIndex].buffer;
@@ -823,13 +832,13 @@
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
             gl.bindFramebuffer(gl.FRAMEBUFFER, activePositionBuffer.framebuffer);
             guPrg.push_shader([1, GPGPU_FRAMEBUFFER_SIZE, target, power, speed,
-                               gpgpuVelocityBuffer[passiveVertexIndex].textureIndex,
+                               gpgpuVelocityBuffer[activeVertexIndex].textureIndex,
                                gpgpuPositionBuffer[passiveVertexIndex].textureIndex
             ]);
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
             gl.enable(gl.BLEND);
         }
-        function sceneRender(resolution){
+        function sceneRender(resolution, nowBindBuffer, nowViewport){
             // point floor wave
             // pointFloor(cameraPosition, nowTime, 10.0, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);
 
@@ -840,7 +849,7 @@
             // seaAlgae([0.0, -8.0, 0.0], [resolution, resolution], false);
 
             // gpgpu particle render
-            gpgpuRender([0.0, 0.0, 0.0], 0.2, 1.0);
+            gpgpuRender([0.0, 10.0, 0.0], 0.2, 0.5, [1.0, 0.1, 0.05, 1.0], nowBindBuffer, nowViewport);
         }
         function seaFlower(offset, resolution, isPoint){
             prg.set_program();
