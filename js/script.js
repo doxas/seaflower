@@ -676,7 +676,7 @@
         gl.bindFramebuffer(gl.FRAMEBUFFER, activePositionBuffer.framebuffer);
         gl3.scene_clear([0.0, 0.0, 0.0, 1.0]);
         gl3.scene_view(null, 0, 0, GPGPU_FRAMEBUFFER_SIZE, GPGPU_FRAMEBUFFER_SIZE);
-        gfPrg.push_shader([5.0, 1]);
+        gfPrg.push_shader([10.0, 1]);
         gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
 
         // gl flags
