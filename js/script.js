@@ -13,7 +13,7 @@
     var canvas, gl, run, mat4, qtn, ext;
     var canvasPoint, canvasGlow, canvasText;
     var canvasFont, canvasFontCtx, canvasFontWidth;
-    var prg, nPrg, gPrg, pPrg, lPrg, fPrg, ptPrg;
+    var prg, nPrg, gPrg, pPrg, lPrg, fPrg, ptPrg, gfPrg;
     var gWeight;
     var canvasWidth, canvasHeight;
 
@@ -28,6 +28,9 @@
     var DEFAULT_CAM_POSITION = [0.0, 15.0, 20.0];
     var DEFAULT_CAM_CENTER   = [0.0, 0.0, 0.0];
     var DEFAULT_CAM_UP       = cameraUpVector(DEFAULT_CAM_POSITION, DEFAULT_CAM_CENTER);
+    var FRAMEBUFFER_SIZE = 512;
+    var GPGPU_FRAMEBUFFER_SIZE = 256;
+    var SMALL_FRAMEBUFFER_SIZE = 64;
     var FLOWER_SIZE = 2.0;
     var ALGAE_SIZE = 2.0;
     var FLOWER_MAP_SIZE = 20.0;
@@ -265,6 +268,17 @@
             shaderLoadCheck
         );
 
+        // gpgpu first program
+        gfPrg = gl3.program.create_from_file(
+            'shader/gpgpu_first.vert',
+            'shader/gpgpu_first.frag',
+            ['position'],
+            [3],
+            ['size', 'mode'],
+            ['1f', '1i'],
+            shaderLoadCheck
+        );
+
         // final program
         fPrg = gl3.program.create_from_file(
             'shader/final.vert',
@@ -283,6 +297,7 @@
                pPrg.prg != null &&
                lPrg.prg != null &&
                ptPrg.prg != null &&
+               gfPrg.prg != null &&
                fPrg.prg != null
             ){init();}
         }
@@ -551,13 +566,13 @@
         var qt = qtn.identity(qtn.create());
 
         // frame buffer
-        var bufferSize = 512;
-        var smallBufferSize = 64;
-        var frameBuffer  = gl3.create_framebuffer(bufferSize, bufferSize, 4);
-        var noiseBuffer  = gl3.create_framebuffer(bufferSize, bufferSize, 5);
-        var hGaussBuffer = gl3.create_framebuffer(bufferSize, bufferSize, 6);
-        var vGaussBuffer = gl3.create_framebuffer(bufferSize, bufferSize, 7);
-        var smallBuffer  = gl3.create_framebuffer(smallBufferSize, smallBufferSize, 8);
+        var frameBuffer  = gl3.create_framebuffer(FRAMEBUFFER_SIZE, FRAMEBUFFER_SIZE, 4);
+        var noiseBuffer  = gl3.create_framebuffer(FRAMEBUFFER_SIZE, FRAMEBUFFER_SIZE, 5);
+        var hGaussBuffer = gl3.create_framebuffer(FRAMEBUFFER_SIZE, FRAMEBUFFER_SIZE, 6);
+        var vGaussBuffer = gl3.create_framebuffer(FRAMEBUFFER_SIZE, FRAMEBUFFER_SIZE, 7);
+        var smallBuffer  = gl3.create_framebuffer(SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE, 8);
+        var gpgpuVelocityBuffer = gl3.create_framebuffer(GPGPU_FRAMEBUFFER_SIZE, GPGPU_FRAMEBUFFER_SIZE, 9);
+        var gpgpuPositionBuffer = gl3.create_framebuffer(GPGPU_FRAMEBUFFER_SIZE, GPGPU_FRAMEBUFFER_SIZE, 10);
 
         // texture setting
         gl.activeTexture(gl.TEXTURE0);
@@ -580,14 +595,32 @@
         gl.bindTexture(gl.TEXTURE_2D, gl3.textures[8].texture);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.activeTexture(gl.TEXTURE9);
+        gl.bindTexture(gl.TEXTURE_2D, gl3.textures[9].texture);
+        gl.activeTexture(gl.TEXTURE10);
+        gl.bindTexture(gl.TEXTURE_2D, gl3.textures[10].texture);
 
         // noise texture
         nPrg.set_program();
         nPrg.set_attribute(planeVBO, planeIBO);
         gl.bindFramebuffer(gl.FRAMEBUFFER, noiseBuffer.framebuffer);
         gl3.scene_clear([0.0, 0.0, 0.0, 1.0]);
-        gl3.scene_view(null, 0, 0, bufferSize, bufferSize);
-        nPrg.push_shader([[bufferSize, bufferSize]]);
+        gl3.scene_view(null, 0, 0, FRAMEBUFFER_SIZE, FRAMEBUFFER_SIZE);
+        nPrg.push_shader([[FRAMEBUFFER_SIZE, FRAMEBUFFER_SIZE]]);
+        gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+
+        // gpgpu texture
+        gfPrg.set_program();
+        gfPrg.set_attribute(planeVBO, planeIBO);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, gpgpuVelocityBuffer.framebuffer);
+        gl3.scene_clear([0.0, 0.0, 0.0, 1.0]);
+        gl3.scene_view(null, 0, 0, GPGPU_FRAMEBUFFER_SIZE, GPGPU_FRAMEBUFFER_SIZE);
+        gfPrg.push_shader([0.0, 0]);
+        gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, gpgpuPositionBuffer.framebuffer);
+        gl3.scene_clear([0.0, 0.0, 0.0, 1.0]);
+        gl3.scene_view(null, 0, 0, GPGPU_FRAMEBUFFER_SIZE, GPGPU_FRAMEBUFFER_SIZE);
+        gfPrg.push_shader([0.25, 1]);
         gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
 
         // gl flags
@@ -626,31 +659,23 @@
 
             // render to small buffer =========================================
             gl.bindFramebuffer(gl.FRAMEBUFFER, smallBuffer.framebuffer);
-            gl.viewport(0, 0, smallBufferSize, smallBufferSize);
+            gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
 
             // scene clear
             clearRender(0.8);
 
-            // point floor wave
-            // pointFloor(cameraPosition, nowTime, 10.0, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);
-
-            // off screen - models
-            // seaFlower([0.0, -8.0, 0.0], [smallBufferSize, smallBufferSize], false);
-            seaAlgae([0.0, -8.0, 0.0], [smallBufferSize, smallBufferSize], false);
+            // scene render to small buffer
+            sceneRender(SMALL_FRAMEBUFFER_SIZE);
 
             // render to frame buffer =========================================
             gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer.framebuffer);
-            gl.viewport(0, 0, bufferSize, bufferSize);
+            gl.viewport(0, 0, FRAMEBUFFER_SIZE, FRAMEBUFFER_SIZE);
 
             // scene clear
             clearRender(0.8);
 
-            // point floor wave
-            // pointFloor(cameraPosition, nowTime, 10.0, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);
-
-            // off screen - models
-            // seaFlower([0.0, -8.0, 0.0], [bufferSize, bufferSize], false);
-            seaAlgae([0.0, -8.0, 0.0], [bufferSize, bufferSize], false);
+            // scene render to framebuffer
+            sceneRender(FRAMEBUFFER_SIZE);
 
             // horizon gauss render to fBuffer ================================
             gaussHorizon();
@@ -667,10 +692,10 @@
             fPrg.push_shader([[1.0, 1.0, 1.0, 1.0], 4, 5, 0, nowTime]);  // original scene
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
             // fPrg.push_shader([[1.0, 1.0, 1.0, 0.25], 8, 5, 1, nowTime]); // mosaic layer
-            gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+            // gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
             // fPrg.push_shader([[0.1, 0.3, 1.0, 1.0], 5, 5, 2, nowTime]);  // atan layer
-            gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
-            fPrg.push_shader([[1.5, 1.5, 1.5, 0.75], 7, 5, 0, nowTime]); // blur layer
+            // gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+            // fPrg.push_shader([[1.5, 1.5, 1.5, 0.75], 7, 5, 0, nowTime]); // blur layer
             // gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
 
             // particle wave ==================================================
@@ -713,6 +738,16 @@
             gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE);
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
             gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE, gl.ONE, gl.ONE);
+        }
+        function sceneRender(resolution){
+            // point floor wave
+            // pointFloor(cameraPosition, nowTime, 10.0, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);
+
+            // off screen - seaflower
+            // seaFlower([0.0, -8.0, 0.0], [resolution, resolution], false);
+
+            // off screen - seaalgae
+            seaAlgae([0.0, -8.0, 0.0], [resolution, resolution], false);
         }
         function seaFlower(offset, resolution, isPoint){
             prg.set_program();
@@ -775,17 +810,17 @@
         function gaussHorizon(){
             gl.bindFramebuffer(gl.FRAMEBUFFER, hGaussBuffer.framebuffer);
             gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
-            gl.viewport(0, 0, bufferSize, bufferSize);
+            gl.viewport(0, 0, FRAMEBUFFER_SIZE, FRAMEBUFFER_SIZE);
             gPrg.set_program();
             gPrg.set_attribute(planeVBO, planeIBO);
-            gPrg.push_shader([[bufferSize, bufferSize], true, gWeight, 4]);
+            gPrg.push_shader([[FRAMEBUFFER_SIZE, FRAMEBUFFER_SIZE], true, gWeight, 4]);
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
         }
         function gaussVertical(){
             gl.bindFramebuffer(gl.FRAMEBUFFER, vGaussBuffer.framebuffer);
             gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
-            gl.viewport(0, 0, bufferSize, bufferSize);
-            gPrg.push_shader([[bufferSize, bufferSize], false, gWeight, 6]);
+            gl.viewport(0, 0, FRAMEBUFFER_SIZE, FRAMEBUFFER_SIZE);
+            gPrg.push_shader([[FRAMEBUFFER_SIZE, FRAMEBUFFER_SIZE], false, gWeight, 6]);
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
         }
         function particleWaveRender(size, color){
