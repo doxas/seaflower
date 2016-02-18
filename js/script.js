@@ -13,7 +13,7 @@
     var canvas, gl, run, mat4, qtn, ext;
     var canvasPoint, canvasGlow, canvasText;
     var canvasFont, canvasFontCtx, canvasFontWidth;
-    var prg, nPrg, gPrg, pPrg, lPrg, fPrg, ptPrg, gfPrg;
+    var prg, nPrg, gPrg, pPrg, lPrg, fPrg, ptPrg, gfPrg, guPrg, grPrg;
     var gWeight;
     var canvasWidth, canvasHeight;
 
@@ -55,6 +55,11 @@
         canvas.height = canvasHeight = window.innerHeight;
 
         // ext
+        ext = gl.getExtension('OES_texture_float');
+        if(ext == null){
+            alert('OES_texture_float not supported');
+            return;
+        }
         ext = gl.getExtension('ANGLE_instanced_arrays');
         if(ext == null){
             alert('ANGLE_instanced_arrays not supported');
@@ -279,6 +284,28 @@
             shaderLoadCheck
         );
 
+        // gpgpu update program
+        guPrg = gl3.program.create_from_file(
+            'shader/gpgpu_update.vert',
+            'shader/gpgpu_update.frag',
+            ['position'],
+            [3],
+            ['mode', 'resolution', 'target', 'power', 'speed', 'velocityTexture', 'positionTexture'],
+            ['1i', '2fv', '3fv', '1f', '1f', '1i', '1i'],
+            shaderLoadCheck
+        );
+
+        // gpgpu render program
+        grPrg = gl3.program.create_from_file(
+            'shader/gpgpu_render.vert',
+            'shader/gpgpu_render.frag',
+            ['index'],
+            [1],
+            ['resolution', 'pointScale', 'positionTexture', 'globalColor'],
+            ['1f', '1f', '1i', '4fv'],
+            shaderLoadCheck
+        );
+
         // final program
         fPrg = gl3.program.create_from_file(
             'shader/final.vert',
@@ -291,14 +318,16 @@
         );
 
         function shaderLoadCheck(){
-            if( prg.prg != null &&
-               nPrg.prg != null &&
-               gPrg.prg != null &&
-               pPrg.prg != null &&
-               lPrg.prg != null &&
+            if( prg.prg  != null &&
+               nPrg.prg  != null &&
+               gPrg.prg  != null &&
+               pPrg.prg  != null &&
+               lPrg.prg  != null &&
                ptPrg.prg != null &&
                gfPrg.prg != null &&
-               fPrg.prg != null
+               guPrg.prg != null &&
+               grPrg.prg != null &&
+               fPrg.prg  != null
             ){init();}
         }
     }
@@ -529,6 +558,19 @@
         })(FLOOR_SIZE, 0.0, 2.0 / FLOOR_SIZE);
         var floorVBO = [gl3.create_vbo(floorPosition)];
 
+        // gpgpu particle
+        var gpgpuIndex = [];
+        (function(size){
+            var i, j, k;
+            for(i = 0; i < size; ++i){
+                k = i * size;
+                for(j = 0; j < size; ++j){
+                    gpgpuIndex.push(j + k);
+                }
+            }
+        })(GPGPU_FRAMEBUFFER_SIZE);
+        var gpgpuVBO = [gl3.create_vbo(gpgpuIndex)];
+
         // particle
         var particlePosition = [];
         var particleWave = [];
@@ -571,8 +613,18 @@
         var hGaussBuffer = gl3.create_framebuffer(FRAMEBUFFER_SIZE, FRAMEBUFFER_SIZE, 6);
         var vGaussBuffer = gl3.create_framebuffer(FRAMEBUFFER_SIZE, FRAMEBUFFER_SIZE, 7);
         var smallBuffer  = gl3.create_framebuffer(SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE, 8);
-        var gpgpuVelocityBuffer = gl3.create_framebuffer(GPGPU_FRAMEBUFFER_SIZE, GPGPU_FRAMEBUFFER_SIZE, 9);
-        var gpgpuPositionBuffer = gl3.create_framebuffer(GPGPU_FRAMEBUFFER_SIZE, GPGPU_FRAMEBUFFER_SIZE, 10);
+        var gpgpuVelocityBuffer = [
+            {buffer: gl3.create_framebuffer_float(GPGPU_FRAMEBUFFER_SIZE, GPGPU_FRAMEBUFFER_SIZE, 9),  textureIndex: 9},
+            {buffer: gl3.create_framebuffer_float(GPGPU_FRAMEBUFFER_SIZE, GPGPU_FRAMEBUFFER_SIZE, 10), textureIndex: 10}
+        ];
+        var gpgpuPositionBuffer = [
+            {buffer: gl3.create_framebuffer_float(GPGPU_FRAMEBUFFER_SIZE, GPGPU_FRAMEBUFFER_SIZE, 11), textureIndex: 11},
+            {buffer: gl3.create_framebuffer_float(GPGPU_FRAMEBUFFER_SIZE, GPGPU_FRAMEBUFFER_SIZE, 12), textureIndex: 12}
+        ];
+        var activeVertexIndex = 0;
+        var passiveVertexIndex = 1;
+        var activeVelocityBuffer = gpgpuVelocityBuffer[activeVertexIndex].buffer;
+        var activePositionBuffer = gpgpuPositionBuffer[activeVertexIndex].buffer;
 
         // texture setting
         gl.activeTexture(gl.TEXTURE0);
@@ -599,6 +651,10 @@
         gl.bindTexture(gl.TEXTURE_2D, gl3.textures[9].texture);
         gl.activeTexture(gl.TEXTURE10);
         gl.bindTexture(gl.TEXTURE_2D, gl3.textures[10].texture);
+        gl.activeTexture(gl.TEXTURE11);
+        gl.bindTexture(gl.TEXTURE_2D, gl3.textures[11].texture);
+        gl.activeTexture(gl.TEXTURE12);
+        gl.bindTexture(gl.TEXTURE_2D, gl3.textures[12].texture);
 
         // noise texture
         nPrg.set_program();
@@ -612,12 +668,12 @@
         // gpgpu texture
         gfPrg.set_program();
         gfPrg.set_attribute(planeVBO, planeIBO);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, gpgpuVelocityBuffer.framebuffer);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, activeVelocityBuffer.framebuffer);
         gl3.scene_clear([0.0, 0.0, 0.0, 1.0]);
         gl3.scene_view(null, 0, 0, GPGPU_FRAMEBUFFER_SIZE, GPGPU_FRAMEBUFFER_SIZE);
         gfPrg.push_shader([0.0, 0]);
         gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, gpgpuPositionBuffer.framebuffer);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, activePositionBuffer.framebuffer);
         gl3.scene_clear([0.0, 0.0, 0.0, 1.0]);
         gl3.scene_view(null, 0, 0, GPGPU_FRAMEBUFFER_SIZE, GPGPU_FRAMEBUFFER_SIZE);
         gfPrg.push_shader([0.25, 1]);
@@ -739,6 +795,40 @@
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
             gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE, gl.ONE, gl.ONE);
         }
+        function activeVertexSwitcher(){
+            passiveVertexIndex = activeVertexIndex;
+            return activeVertexIndex === 0 ? 1 : 0;
+        }
+        function gpgpuRender(){
+            grPrg.set_program();
+            grPrg.set_attribute(gpgpuVBO, null);
+            grPrg.push_shader([
+                GPGPU_FRAMEBUFFER_SIZE, 1.0,
+                gpgpuPositionBuffer[activeVertexIndex].textureIndex, [1.0, 0.2, 0.1, 1.0]
+            ]);
+            gl3.draw_arrays(gl.POINTS, gpgpuIndex.length);
+        }
+        function gpgpuUpdate(target, power, speed){
+            activeVertexIndex = activeVertexSwitcher();
+            activeVelocityBuffer = gpgpuVelocityBuffer[activeVertexIndex].buffer;
+            activePositionBuffer = gpgpuPositionBuffer[activeVertexIndex].buffer;
+            gl.disable(gl.BLEND);
+            guPrg.set_program();
+            guPrg.set_attribute(planeVBO, planeIBO);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, activeVelocityBuffer.framebuffer);
+            guPrg.push_shader([0, GPGPU_FRAMEBUFFER_SIZE, target, power, speed,
+                               gpgpuVelocityBuffer[passiveVertexIndex].textureIndex,
+                               gpgpuPositionBuffer[passiveVertexIndex].textureIndex
+            ]);
+            gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, activePositionBuffer.framebuffer);
+            guPrg.push_shader([1, GPGPU_FRAMEBUFFER_SIZE, target, power, speed,
+                               gpgpuVelocityBuffer[passiveVertexIndex].textureIndex,
+                               gpgpuPositionBuffer[passiveVertexIndex].textureIndex
+            ]);
+            gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+            gl.enable(gl.BLEND);
+        }
         function sceneRender(resolution){
             // point floor wave
             // pointFloor(cameraPosition, nowTime, 10.0, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);
@@ -747,7 +837,10 @@
             // seaFlower([0.0, -8.0, 0.0], [resolution, resolution], false);
 
             // off screen - seaalgae
-            seaAlgae([0.0, -8.0, 0.0], [resolution, resolution], false);
+            // seaAlgae([0.0, -8.0, 0.0], [resolution, resolution], false);
+
+            // gpgpu particle render
+            gpgpuRender([0.0, 0.0, 0.0], 0.2, 1.0);
         }
         function seaFlower(offset, resolution, isPoint){
             prg.set_program();

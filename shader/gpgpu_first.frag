@@ -15,12 +15,12 @@ void main(){
         rnd(gl_FragCoord.xx),
         rnd(gl_FragCoord.xy),
         rnd(gl_FragCoord.yy)
-    ));
+    ) * 2.0 - 1.0);
     q = normalize(vec3(
         rnd(gl_FragCoord.xy),
         rnd(gl_FragCoord.yx),
         rnd(gl_FragCoord.xx)
-    ));
+    ) * 2.0 - 1.0);
     s = vec3(q.x, p.y, p.x * q.y);
     t = vec3(q.z, p.x, p.z * q.x);
     a = rnd(gl_FragCoord.xy);
