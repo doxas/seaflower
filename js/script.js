@@ -640,16 +640,20 @@
         gl.bindTexture(gl.TEXTURE_2D, gl3.textures[3].texture);
         gl.activeTexture(gl.TEXTURE4);
         gl.bindTexture(gl.TEXTURE_2D, gl3.textures[4].texture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         gl.activeTexture(gl.TEXTURE5);
         gl.bindTexture(gl.TEXTURE_2D, gl3.textures[5].texture);
         gl.activeTexture(gl.TEXTURE6);
         gl.bindTexture(gl.TEXTURE_2D, gl3.textures[6].texture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
         gl.activeTexture(gl.TEXTURE7);
         gl.bindTexture(gl.TEXTURE_2D, gl3.textures[7].texture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
         gl.activeTexture(gl.TEXTURE8);
         gl.bindTexture(gl.TEXTURE_2D, gl3.textures[8].texture);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         gl.activeTexture(gl.TEXTURE9);
         gl.bindTexture(gl.TEXTURE_2D, gl3.textures[9].texture);
         gl.activeTexture(gl.TEXTURE10);
@@ -679,7 +683,7 @@
         gl.bindFramebuffer(gl.FRAMEBUFFER, activePositionBuffer.framebuffer);
         gl3.scene_clear([0.0, 0.0, 0.0, 1.0]);
         gl3.scene_view(null, 0, 0, GPGPU_FRAMEBUFFER_SIZE, GPGPU_FRAMEBUFFER_SIZE);
-        gfPrg.push_shader([10.0, 1]);
+        gfPrg.push_shader([20.0, 1]);
         gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
 
         // gl flags
@@ -697,6 +701,7 @@
         var centerPoint = [0.0, 0.0, 0.0];
         var cameraUpDirection = [];
         var camera;
+        var gpgpu = true;
         var particleTarget = [];
 //        gl3.audio.src[0].play();
 
@@ -722,20 +727,8 @@
             gl.bindFramebuffer(gl.FRAMEBUFFER, smallBuffer.framebuffer);
             gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
 
-            // scene clear
-            clearRender(0.8);
-
-            // scene render to small buffer
+            // scene render to small buffer and framebuffer
             sceneRender(SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
-
-            // render to frame buffer =========================================
-            gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer.framebuffer);
-            gl.viewport(0, 0, FRAMEBUFFER_SIZE, FRAMEBUFFER_SIZE);
-
-            // scene clear
-            clearRender(0.8);
-
-            // scene render to framebuffer
             sceneRender(FRAMEBUFFER_SIZE, null, null);
 
             // horizon gauss render to fBuffer ================================
@@ -802,7 +795,18 @@
             gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE, gl.ONE, gl.ONE);
         }
         function sceneRender(resolution, nowBindBuffer, nowViewport){
-            var i, j;
+            // render to frame buffer =========================================
+            if(!nowBindBuffer){
+                gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer.framebuffer);
+                gl.viewport(0, 0, FRAMEBUFFER_SIZE, FRAMEBUFFER_SIZE);
+            }else{if(gpgpu){gpgpuSceneUpdate();}}
+
+            // scene clear
+            clearRender(0.8);
+
+            // gpgpu particle render
+            gpgpuRender(particleTarget, 0.02, 0.15, [1.0, 0.05, 0.1, 1.0], nowBindBuffer, nowViewport);
+
             // point floor wave
             // pointFloor(cameraPosition, nowTime, 10.0, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);
 
@@ -811,18 +815,16 @@
 
             // off screen - seaalgae
             // seaAlgae([0.0, -8.0, 0.0], [resolution, resolution], false);
-
-            // gpgpu particle render
-            if(nowBindBuffer){
-                particleTarget = [0.0, 5.0, 0.0];
-                i = gl3.PI2 * 0.1 * nowTime;
-                j = (Math.cos(nowTime) + 1.0) / 2.0;
-                qtn.rotate(i, [1.0, 0.0, 0.0], pqtx);
-                qtn.rotate(i, [0.0, 0.0, 1.0], pqtz);
-                qtn.slerp(pqtx, pqtz, j, pqt);
-                qtn.toVecIII(particleTarget, pqt, particleTarget);
-            }
-            gpgpuRender(particleTarget, 0.02, 0.15, [1.0, 0.05, 0.1, 1.0], nowBindBuffer, nowViewport);
+        }
+        function gpgpuSceneUpdate(){
+            var i, j;
+            particleTarget = [0.0, 5.0, 0.0];
+            i = gl3.PI2 * 0.1 * nowTime;
+            j = (Math.cos(nowTime) + 1.0) / 2.0;
+            qtn.rotate(i, [1.0, 0.0, 0.0], pqtx);
+            qtn.rotate(i, [0.0, 0.0, 1.0], pqtz);
+            qtn.slerp(pqtx, pqtz, j, pqt);
+            qtn.toVecIII(particleTarget, pqt, particleTarget);
         }
         function activeVertexSwitcher(){
             passiveVertexIndex = activeVertexIndex;

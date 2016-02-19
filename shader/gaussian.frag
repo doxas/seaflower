@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------------
  * gaussian shader
  * ---------------------------------------------------------------------------- */
-precision mediump float;
+precision highp float;
 
 uniform vec2 resolution;
 uniform bool horizontal;
