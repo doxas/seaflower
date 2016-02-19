@@ -779,8 +779,8 @@
             gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
 
             gpuUpdateFlag = gpgpuAnimation = false;
-            sceneRender(0.8, 2, false, true, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
-            sceneRender(0.8, 2, false, true, false, false, false, FRAMEBUFFER_SIZE, null, null);
+            sceneRender(0.8, 3, false, true, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
+            sceneRender(0.8, 3, false, true, false, false, false, FRAMEBUFFER_SIZE, null, null);
             finalSceneRender(true, false, false, false, null);
         };
 
@@ -822,28 +822,36 @@
             gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE, gl.ONE, gl.ONE);
         }
         function effectRender(mode){
-            var firstColor, secondColor;
+            var effectmode, firstColor, secondColor;
             ePrg.set_program();
             ePrg.set_attribute(planeVBO, planeIBO);
             switch(mode){
-                case 0: // center to corner circle
+                case 0: // center to corner circle (dark blue)
+                    effectmode = mode;
                     firstColor = [0.1, 0.2, 0.3, 0.5];
                     secondColor = [0.0, 0.0, 0.0, 0.5];
                     break;
-                case 1: // top to corner circle
+                case 1: // top to corner circle (dark blue)
+                    effectmode = mode;
                     firstColor = [0.1, 0.2, 0.3, 0.5];
                     secondColor = [0.0, 0.0, 0.0, 0.5];
                     break;
-                case 2: // top to bottom gradation
+                case 2: // top to bottom gradation (dark blue to dark purple)
+                    effectmode = mode;
                     firstColor = [0.05, 0.01, 0.15, 0.5];
                     secondColor = [0.25, 0.05, 0.25, 0.5];
+                    break;
+                case 3: // top to corner circle (dark red)
+                    effectmode = 1;
+                    firstColor = [0.2, 0.0, 0.0, 0.5];
+                    secondColor = [0.1, 0.0, 0.0, 0.5];
                     break;
                 default:
                     firstColor = [0.0, 0.0, 0.0, 1.0];
                     secondColor = [1.0, 1.0, 1.0, 1.0];
                     break;
             }
-            ePrg.push_shader([mode, FRAMEBUFFER_SIZE, firstColor, secondColor]);
+            ePrg.push_shader([effectmode, FRAMEBUFFER_SIZE, firstColor, secondColor]);
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
         }
         function sceneRender(alpha, effectMode, gpgpu, pointfloor, seaflower, seaalgae, wave, resolution, nowBindBuffer, nowViewport){
