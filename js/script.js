@@ -13,7 +13,7 @@
     var canvas, gl, run, mat4, qtn, ext;
     var canvasPoint, canvasGlow, canvasText;
     var canvasFont, canvasFontCtx, canvasFontWidth;
-    var prg, nPrg, gPrg, pPrg, lPrg, fPrg, ptPrg, gfPrg, guPrg, grPrg;
+    var prg, nPrg, gPrg, pPrg, ePrg, lPrg, fPrg, ptPrg, gfPrg, guPrg, grPrg;
     var gWeight;
     var canvasWidth, canvasHeight;
 
@@ -262,6 +262,17 @@
             shaderLoadCheck
         );
 
+        // layer effect program
+        ePrg = gl3.program.create_from_file(
+            'shader/layer_effect.vert',
+            'shader/layer_effect.frag',
+            ['position'],
+            [3],
+            ['mode', 'resolution', 'firstColor', 'secondColor'],
+            ['1i', '1f', '4fv', '4fv'],
+            shaderLoadCheck
+        );
+
         // particle program
         ptPrg = gl3.program.create_from_file(
             'shader/particle.vert',
@@ -323,6 +334,7 @@
                gPrg.prg  != null &&
                pPrg.prg  != null &&
                lPrg.prg  != null &&
+               ePrg.prg  != null &&
                ptPrg.prg != null &&
                gfPrg.prg != null &&
                guPrg.prg != null &&
@@ -713,7 +725,7 @@
 
             switch(true){
                 default:
-                    sceneFunctions[0]();
+                    sceneFunctions[1]();
                     break;
             }
 
@@ -725,6 +737,7 @@
         sceneFunctions[0] = function(){
             // ----------------------------------------------------------------
             // scene 0: default scene(gpgpu particle animation and camera move)
+            //  clearAlpha: 0.8, effectmode: null
             //  gpgpu: true, floor: false, flower: false, algae: false, wave: false
             //  origin: true, blur: false, mosaic: false, atan: false
             // ----------------------------------------------------------------
@@ -742,11 +755,32 @@
             gl.bindFramebuffer(gl.FRAMEBUFFER, smallBuffer.framebuffer);
             gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
 
-            // scene render to small buffer and framebuffer
-            gpuUpdateFlag = true;
-            gpgpuAnimation = true;
-            sceneRender(true, false, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
-            sceneRender(true, false, false, false, false, FRAMEBUFFER_SIZE, null, null);
+            gpuUpdateFlag = gpgpuAnimation = true;
+            sceneRender(0.8, null, true, false, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
+            sceneRender(0.8, null, true, false, false, false, false, FRAMEBUFFER_SIZE, null, null);
+            finalSceneRender(true, false, false, false, null);
+        };
+        sceneFunctions[1] = function(){
+            // ----------------------------------------------------------------
+            // scene 1: test scene(point floor and effect mode check)
+            // ----------------------------------------------------------------
+            qtn.identity(qt);
+            qtn.rotate((nowTime * 0.5) % gl3.PI2, [0.0, -1.0, 0.0], qt);
+            qtn.toVecIII(cameraPosition, qt, cameraPosition);
+            qtn.toVecIII(cameraUpDirection, qt, cameraUpDirection);
+            camera = gl3.camera.create(
+                cameraPosition,
+                centerPoint,
+                cameraUpDirection,
+                60, aspect, 5.0, 100.0
+            );
+            mat4.vpFromCamera(camera, vMatrix, pMatrix, vpMatrix);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, smallBuffer.framebuffer);
+            gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
+
+            gpuUpdateFlag = gpgpuAnimation = false;
+            sceneRender(0.8, 2, false, true, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
+            sceneRender(0.8, 2, false, true, false, false, false, FRAMEBUFFER_SIZE, null, null);
             finalSceneRender(true, false, false, false, null);
         };
 
@@ -787,14 +821,41 @@
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
             gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE, gl.ONE, gl.ONE);
         }
-        function sceneRender(gpgpu, pointfloor, seaflower, seaalgae, wave, resolution, nowBindBuffer, nowViewport){
+        function effectRender(mode){
+            var firstColor, secondColor;
+            ePrg.set_program();
+            ePrg.set_attribute(planeVBO, planeIBO);
+            switch(mode){
+                case 0: // center to corner circle
+                    firstColor = [0.1, 0.2, 0.3, 0.5];
+                    secondColor = [0.0, 0.0, 0.0, 0.5];
+                    break;
+                case 1: // top to corner circle
+                    firstColor = [0.1, 0.2, 0.3, 0.5];
+                    secondColor = [0.0, 0.0, 0.0, 0.5];
+                    break;
+                case 2: // top to bottom gradation
+                    firstColor = [0.05, 0.01, 0.15, 0.5];
+                    secondColor = [0.25, 0.05, 0.25, 0.5];
+                    break;
+                default:
+                    firstColor = [0.0, 0.0, 0.0, 1.0];
+                    secondColor = [1.0, 1.0, 1.0, 1.0];
+                    break;
+            }
+            ePrg.push_shader([mode, FRAMEBUFFER_SIZE, firstColor, secondColor]);
+            gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+        }
+        function sceneRender(alpha, effectMode, gpgpu, pointfloor, seaflower, seaalgae, wave, resolution, nowBindBuffer, nowViewport){
             if(!nowBindBuffer){
                 gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer.framebuffer);
                 gl.viewport(0, 0, FRAMEBUFFER_SIZE, FRAMEBUFFER_SIZE);
             }
             if(nowBindBuffer && gpgpuAnimation){gpgpuSceneUpdate();}
 
-            clearRender(0.8);
+            clearRender(alpha);
+
+            if(effectMode !== null){effectRender(effectMode);}
 
             if(gpgpu){gpgpuRender(particleTarget, 0.02, 0.15, [1.0, 0.05, 0.1, 1.0], nowBindBuffer, nowViewport);}
             if(pointfloor){pointFloor(cameraPosition, nowTime, 10.0, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);}
