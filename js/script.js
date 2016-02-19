@@ -1053,7 +1053,7 @@
         };
         sceneFunctions[2] = function(alpha){
             // ----------------------------------------------------------------
-            // scene 2: particle floor (wave animation and camera move)
+            // scene 2: particle floor (wave animation and camera rotate axis Y)
             //  clearAlpha: args, effectmode: 2
             //  gpgpu: false, floor: true, flower: false, algae: false, wave: false
             //  origin: true, blur: true, mosaic: false, atan: false
@@ -1066,6 +1066,33 @@
             gpuUpdateFlag = gpgpuAnimation = false;
             sceneRender(a, 2, false, true, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
             sceneRender(a, 2, false, true, false, false, false, FRAMEBUFFER_SIZE, null, null);
+            finalSceneRender(true, true, false, false, null);
+        };
+        sceneFunctions[3] = function(){
+            // ----------------------------------------------------------------
+            // scene 3: particle floor (wave animation and camera rotate axis Y + updown)
+            //  clearAlpha: 0.8, effectmode: 2
+            //  gpgpu: false, floor: true, flower: false, algae: false, wave: false
+            //  origin: true, blur: true, mosaic: false, atan: false
+            // ----------------------------------------------------------------
+            qtn.identity(qt);
+            qtn.rotate((nowTime * 2.0) % gl3.PI2, [0.0, 1.0, 0.0], qt);
+            cameraPosition[1] = Math.sin((nowTime * 0.75) % gl3.PI2) * 25.0;
+            qtn.toVecIII(cameraPosition, qt, cameraPosition);
+            qtn.toVecIII(cameraUpDirection, qt, cameraUpDirection);
+            camera = gl3.camera.create(
+                cameraPosition,
+                centerPoint,
+                cameraUpDirection,
+                60, aspect, 5.0, 100.0
+            );
+            mat4.vpFromCamera(camera, vMatrix, pMatrix, vpMatrix);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, smallBuffer.framebuffer);
+            gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
+
+            gpuUpdateFlag = gpgpuAnimation = false;
+            sceneRender(0.8, 2, false, true, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
+            sceneRender(0.8, 2, false, true, false, false, false, FRAMEBUFFER_SIZE, null, null);
             finalSceneRender(true, true, false, false, null);
         };
 
