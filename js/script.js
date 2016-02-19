@@ -301,8 +301,8 @@
             'shader/gpgpu_render.frag',
             ['index'],
             [1],
-            ['mvpMatrix', 'resolution', 'pointScale', 'positionTexture', 'globalColor'],
-            ['matrix4fv', '1f', '1f', '1i', '4fv'],
+            ['mvpMatrix', 'resolution', 'pointScale', 'positionTexture', 'texture', 'globalColor'],
+            ['matrix4fv', '1f', '1f', '1i', '1i', '4fv'],
             shaderLoadCheck
         );
 
@@ -606,6 +606,9 @@
 
         // quaternion
         var qt = qtn.identity(qtn.create());
+        var pqt  = qtn.identity(qtn.create());
+        var pqtx = qtn.identity(qtn.create());
+        var pqtz = qtn.identity(qtn.create());
 
         // frame buffer
         var frameBuffer  = gl3.create_framebuffer(FRAMEBUFFER_SIZE, FRAMEBUFFER_SIZE, 4);
@@ -694,6 +697,7 @@
         var centerPoint = [0.0, 0.0, 0.0];
         var cameraUpDirection = [];
         var camera;
+        var particleTarget = [];
 //        gl3.audio.src[0].play();
 
         render();
@@ -703,7 +707,7 @@
 
             // perspective projection
             qtn.identity(qt);
-            qtn.rotate((nowTime * 0.1) % gl3.PI2, [0.0, 1.0, 0.0], qt);
+            qtn.rotate((nowTime * 0.5) % gl3.PI2, [0.0, 1.0, 0.0], qt);
             qtn.toVecIII(cameraPosition, qt, cameraPosition);
             qtn.toVecIII(cameraUpDirection, qt, cameraUpDirection);
             camera = gl3.camera.create(
@@ -797,6 +801,29 @@
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
             gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE, gl.ONE, gl.ONE);
         }
+        function sceneRender(resolution, nowBindBuffer, nowViewport){
+            var i, j;
+            // point floor wave
+            // pointFloor(cameraPosition, nowTime, 10.0, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);
+
+            // off screen - seaflower
+            // seaFlower([0.0, -8.0, 0.0], [resolution, resolution], false);
+
+            // off screen - seaalgae
+            // seaAlgae([0.0, -8.0, 0.0], [resolution, resolution], false);
+
+            // gpgpu particle render
+            if(nowBindBuffer){
+                particleTarget = [0.0, 5.0, 0.0];
+                i = gl3.PI2 * 0.1 * nowTime;
+                j = (Math.cos(nowTime) + 1.0) / 2.0;
+                qtn.rotate(i, [1.0, 0.0, 0.0], pqtx);
+                qtn.rotate(i, [0.0, 0.0, 1.0], pqtz);
+                qtn.slerp(pqtx, pqtz, j, pqt);
+                qtn.toVecIII(particleTarget, pqt, particleTarget);
+            }
+            gpgpuRender(particleTarget, 0.02, 0.15, [1.0, 0.05, 0.1, 1.0], nowBindBuffer, nowViewport);
+        }
         function activeVertexSwitcher(){
             passiveVertexIndex = activeVertexIndex;
             return activeVertexIndex === 0 ? 1 : 0;
@@ -810,8 +837,8 @@
             grPrg.set_program();
             grPrg.set_attribute(gpgpuVBO, null);
             grPrg.push_shader([
-                vpMatrix, GPGPU_FRAMEBUFFER_SIZE, 1.0,
-                gpgpuPositionBuffer[activeVertexIndex].textureIndex, globalColor
+                vpMatrix, GPGPU_FRAMEBUFFER_SIZE, 12.0,
+                gpgpuPositionBuffer[activeVertexIndex].textureIndex, 0, globalColor
             ]);
             gl3.draw_arrays(gl.POINTS, gpgpuIndex.length);
         }
@@ -837,19 +864,6 @@
             ]);
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
             gl.enable(gl.BLEND);
-        }
-        function sceneRender(resolution, nowBindBuffer, nowViewport){
-            // point floor wave
-            // pointFloor(cameraPosition, nowTime, 10.0, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);
-
-            // off screen - seaflower
-            // seaFlower([0.0, -8.0, 0.0], [resolution, resolution], false);
-
-            // off screen - seaalgae
-            // seaAlgae([0.0, -8.0, 0.0], [resolution, resolution], false);
-
-            // gpgpu particle render
-            gpgpuRender([0.0, 10.0, 0.0], 0.2, 0.5, [1.0, 0.1, 0.05, 1.0], nowBindBuffer, nowViewport);
         }
         function seaFlower(offset, resolution, isPoint){
             prg.set_program();
