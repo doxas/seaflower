@@ -720,15 +720,23 @@
 
         // rendering loop
         function render(){
+            var i;
             updater();
 
             if(nowTime < 100.0){
                 switch(true){
-                    case nowTime < 5.0:
-                        sceneFunctions[0]();
+                    case nowTime > 100.0:
+                        run = false;
+                        // ====================================================
+                        // floor and camera rotate
+                        i = (nowTime / 10.0) % 1.0;
+                        sceneFunctions[sceneFunctions.length - 1](i);
+                        // ====================================================
                         break;
                     default:
-                        sceneFunctions[1]();
+                        // @@@
+                        i = (nowTime / 10.0) % 1.0;
+                        sceneFunctions[sceneFunctions.length - 1](i);
                         break;
                 }
             }else{
@@ -828,20 +836,26 @@
         }
         function finalSceneRender(original, blur, mosaic, atan, globalColor){
             var color;
-            fPrg.set_program();
-            fPrg.set_attribute(planeVBO, planeIBO);
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-            gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
-            gl.viewport(0, 0, canvasWidth, canvasHeight);
-            if(original){
-                color = globalColor || [1.0, 1.0, 1.0, 1.0];
-                fPrg.push_shader([color, 4, 5, 0, nowTime]);  // original scene
-                gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
-            }
             if(blur){
                 gaussHorizon(); gaussVertical();
                 color = globalColor || [1.5, 1.5, 1.5, 0.75];
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
+                gl.viewport(0, 0, canvasWidth, canvasHeight);
+                fPrg.set_program();
+                fPrg.set_attribute(planeVBO, planeIBO);
                 fPrg.push_shader([color, 7, 5, 0, nowTime]); // blur layer
+                gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+            }else{
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
+                gl.viewport(0, 0, canvasWidth, canvasHeight);
+                fPrg.set_program();
+                fPrg.set_attribute(planeVBO, planeIBO);
+            }
+            if(original){
+                color = globalColor || [1.0, 1.0, 1.0, 1.0];
+                fPrg.push_shader([color, 4, 5, 0, nowTime]);  // original scene
                 gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
             }
             if(mosaic){
@@ -991,17 +1005,11 @@
             ptPrg.push_shader([particleMatrix, nowTime, PARTICLE_FLOOR_WIDTH / 2.0, size, color, 1]);
             gl3.draw_arrays(gl.POINTS, particlePosition.length / 3);
         }
-
-        // scene functions ====================================================
-        sceneFunctions[0] = function(){
-            // ----------------------------------------------------------------
-            // scene 0: default scene(gpgpu particle animation and camera move)
-            //  clearAlpha: 0.8, effectmode: null
-            //  gpgpu: true, floor: false, flower: false, algae: false, wave: false
-            //  origin: true, blur: false, mosaic: false, atan: false
-            // ----------------------------------------------------------------
+        function defaultCameraRotate(rotationSpeed, rotationAxis){
+            var speed = rotationSpeed || 0.5;
+            var axis = rotationAxis || [0.0, 1.0, 0.0];
             qtn.identity(qt);
-            qtn.rotate((nowTime * 0.5) % gl3.PI2, [0.0, -1.0, 0.0], qt);
+            qtn.rotate((nowTime * speed) % gl3.PI2, axis, qt);
             qtn.toVecIII(cameraPosition, qt, cameraPosition);
             qtn.toVecIII(cameraUpDirection, qt, cameraUpDirection);
             camera = gl3.camera.create(
@@ -1011,6 +1019,17 @@
                 60, aspect, 5.0, 100.0
             );
             mat4.vpFromCamera(camera, vMatrix, pMatrix, vpMatrix);
+        }
+
+        // scene functions ====================================================
+        sceneFunctions[0] = function(){
+            // ----------------------------------------------------------------
+            // scene 0: default scene(gpgpu particle animation and camera move)
+            //  clearAlpha: 0.8, effectmode: null
+            //  gpgpu: true, floor: false, flower: false, algae: false, wave: false
+            //  origin: true, blur: false, mosaic: false, atan: false
+            // ----------------------------------------------------------------
+            defaultCameraRotate();
             gl.bindFramebuffer(gl.FRAMEBUFFER, smallBuffer.framebuffer);
             gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
 
@@ -1023,17 +1042,7 @@
             // ----------------------------------------------------------------
             // scene 1: test scene(point floor and effect mode check)
             // ----------------------------------------------------------------
-            qtn.identity(qt);
-            qtn.rotate((nowTime * 0.5) % gl3.PI2, [0.0, -1.0, 0.0], qt);
-            qtn.toVecIII(cameraPosition, qt, cameraPosition);
-            qtn.toVecIII(cameraUpDirection, qt, cameraUpDirection);
-            camera = gl3.camera.create(
-                cameraPosition,
-                centerPoint,
-                cameraUpDirection,
-                60, aspect, 5.0, 100.0
-            );
-            mat4.vpFromCamera(camera, vMatrix, pMatrix, vpMatrix);
+            defaultCameraRotate();
             gl.bindFramebuffer(gl.FRAMEBUFFER, smallBuffer.framebuffer);
             gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
 
@@ -1042,7 +1051,25 @@
             sceneRender(0.8, 3, false, true, false, false, false, FRAMEBUFFER_SIZE, null, null);
             finalSceneRender(true, false, false, false, null);
         };
+        sceneFunctions[2] = function(alpha){
+            // ----------------------------------------------------------------
+            // scene 2: particle floor (wave animation and camera move)
+            //  clearAlpha: args, effectmode: 2
+            //  gpgpu: false, floor: true, flower: false, algae: false, wave: false
+            //  origin: true, blur: true, mosaic: false, atan: false
+            // ----------------------------------------------------------------
+            defaultCameraRotate(0.1, null);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, smallBuffer.framebuffer);
+            gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
 
+            var a = alpha || 0.8;
+            gpuUpdateFlag = gpgpuAnimation = false;
+            sceneRender(a, 2, false, true, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
+            sceneRender(a, 2, false, true, false, false, false, FRAMEBUFFER_SIZE, null, null);
+            finalSceneRender(true, true, false, false, null);
+        };
+
+        // @@@
         render();
     }
 
