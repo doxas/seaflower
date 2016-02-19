@@ -697,11 +697,11 @@
         var beginTime = Date.now();
         var nowTime = 0;
         var gpuUpdateFlag = false;
+        var gpgpuAnimation = false;
         var cameraPosition = [];
         var centerPoint = [0.0, 0.0, 0.0];
         var cameraUpDirection = [];
         var camera;
-        var gpgpu = true;
         var particleTarget = [];
         var sceneFunctions = [];
 //        gl3.audio.src[0].play();
@@ -711,7 +711,11 @@
             // frame update
             updater();
 
-            sceneFunctions[0]();
+            switch(true){
+                default:
+                    sceneFunctions[0]();
+                    break;
+            }
 
             gl.flush();
             if(run){requestAnimationFrame(render);}
@@ -719,7 +723,11 @@
 
         // scene functions ====================================================
         sceneFunctions[0] = function(){
-            // perspective projection
+            // ----------------------------------------------------------------
+            // scene 0: default scene(gpgpu particle animation and camera move)
+            //  gpgpu: true, floor: false, flower: false, algae: false
+            //  origin: true, blur: false, mosaic: false, atan: false
+            // ----------------------------------------------------------------
             qtn.identity(qt);
             qtn.rotate((nowTime * 0.5) % gl3.PI2, [0.0, -1.0, 0.0], qt);
             qtn.toVecIII(cameraPosition, qt, cameraPosition);
@@ -731,15 +739,15 @@
                 60, aspect, 5.0, 100.0
             );
             mat4.vpFromCamera(camera, vMatrix, pMatrix, vpMatrix);
-
-            // render to small buffer =========================================
             gl.bindFramebuffer(gl.FRAMEBUFFER, smallBuffer.framebuffer);
             gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
 
             // scene render to small buffer and framebuffer
-            sceneRender(SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
-            sceneRender(FRAMEBUFFER_SIZE, null, null);
-            finalSceneRender();
+            gpuUpdateFlag = true;
+            gpgpuAnimation = true;
+            sceneRender(true, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
+            sceneRender(true, false, false, false, FRAMEBUFFER_SIZE, null, null);
+            finalSceneRender(true, false, false, false, null);
         };
 
         // sub function =======================================================
@@ -748,6 +756,7 @@
             count++;
             nowTime = (Date.now() - beginTime) / 1000;
             gpuUpdateFlag = false;
+            gpgpuAnimation = false;
             gl3.audio.src[0].update = true;
             soundData = [];
             for(i = 0; i < 16; ++i){
@@ -778,40 +787,48 @@
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
             gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE, gl.ONE, gl.ONE);
         }
-        function sceneRender(resolution, nowBindBuffer, nowViewport){
+        function sceneRender(gpgpu, pointfloor, seaflower, seaalgae, resolution, nowBindBuffer, nowViewport){
             if(!nowBindBuffer){
                 gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer.framebuffer);
                 gl.viewport(0, 0, FRAMEBUFFER_SIZE, FRAMEBUFFER_SIZE);
-            }else{if(gpgpu){gpgpuSceneUpdate();}}
+            }
+            if(nowBindBuffer && gpgpuAnimation){gpgpuSceneUpdate();}
 
             clearRender(0.8);
 
-            gpgpuRender(particleTarget, 0.02, 0.15, [1.0, 0.05, 0.1, 1.0], nowBindBuffer, nowViewport);
-
-            // pointFloor(cameraPosition, nowTime, 10.0, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);
-
-            // seaFlower([0.0, -8.0, 0.0], [resolution, resolution], false);
-
-            // seaAlgae([0.0, -8.0, 0.0], [resolution, resolution], false);
+            if(gpgpu){gpgpuRender(particleTarget, 0.02, 0.15, [1.0, 0.05, 0.1, 1.0], nowBindBuffer, nowViewport);}
+            if(pointfloor){pointFloor(cameraPosition, nowTime, 10.0, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);}
+            if(seaflower){seaFlower([0.0, -8.0, 0.0], [resolution, resolution], false);}
+            if(seaalgae){seaAlgae([0.0, -8.0, 0.0], [resolution, resolution], false);}
         }
-        function finalSceneRender(){
-            // gauss render
-            gaussHorizon();
-            gaussVertical();
-
+        function finalSceneRender(original, blur, mosaic, atan, globalColor){
+            var color;
             fPrg.set_program();
             fPrg.set_attribute(planeVBO, planeIBO);
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
             gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
             gl.viewport(0, 0, canvasWidth, canvasHeight);
-            fPrg.push_shader([[1.0, 1.0, 1.0, 1.0], 4, 5, 0, nowTime]);  // original scene
-            gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
-            // fPrg.push_shader([[1.0, 1.0, 1.0, 0.25], 8, 5, 1, nowTime]); // mosaic layer
-            // gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
-            // fPrg.push_shader([[0.1, 0.3, 1.0, 1.0], 5, 5, 2, nowTime]);  // atan layer
-            // gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
-            // fPrg.push_shader([[1.5, 1.5, 1.5, 0.75], 7, 5, 0, nowTime]); // blur layer
-            // gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+            if(original){
+                color = globalColor || [1.0, 1.0, 1.0, 1.0];
+                fPrg.push_shader([color, 4, 5, 0, nowTime]);  // original scene
+                gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+            }
+            if(blur){
+                gaussHorizon(); gaussVertical();
+                color = globalColor || [1.5, 1.5, 1.5, 0.75];
+                fPrg.push_shader([color, 7, 5, 0, nowTime]); // blur layer
+                gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+            }
+            if(mosaic){
+                color = globalColor || [1.0, 1.0, 1.0, 0.25];
+                fPrg.push_shader([color, 8, 5, 1, nowTime]); // mosaic layer
+                gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+            }
+            if(atan){
+                color = globalColor || [0.1, 0.3, 1.0, 1.0];
+                fPrg.push_shader([color, 5, 5, 2, nowTime]);  // atan layer
+                gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+            }
         }
         function gpgpuSceneUpdate(){
             var i, j;
@@ -829,7 +846,7 @@
         }
         // gpgpu particle render
         function gpgpuRender(target, power, speed, globalColor, nowBindBuffer, nowViewport){
-            if(!gpuUpdateFlag){
+            if(gpuUpdateFlag){
                 gpgpuUpdate(target, power, speed);
                 gl.bindFramebuffer(gl.FRAMEBUFFER, nowBindBuffer);
                 gl.viewport(0, 0, nowViewport, nowViewport);
@@ -843,7 +860,7 @@
             gl3.draw_arrays(gl.POINTS, gpgpuIndex.length);
         }
         function gpgpuUpdate(target, power, speed){
-            gpuUpdateFlag = true;
+            gpuUpdateFlag = false;
             gl.viewport(0, 0, GPGPU_FRAMEBUFFER_SIZE, GPGPU_FRAMEBUFFER_SIZE);
             activeVertexIndex = activeVertexSwitcher();
             activeVelocityBuffer = gpgpuVelocityBuffer[activeVertexIndex].buffer;
