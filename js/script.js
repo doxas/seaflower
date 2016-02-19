@@ -675,6 +675,10 @@
         gl.activeTexture(gl.TEXTURE12);
         gl.bindTexture(gl.TEXTURE_2D, gl3.textures[12].texture);
 
+        // gl flags
+        gl.disable(gl.DEPTH_TEST);
+        gl.enable(gl.BLEND);
+
         // noise texture
         nPrg.set_program();
         nPrg.set_attribute(planeVBO, planeIBO);
@@ -698,10 +702,6 @@
         gfPrg.push_shader([20.0, 1]);
         gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
 
-        // gl flags
-        gl.disable(gl.DEPTH_TEST);
-        gl.enable(gl.BLEND);
-
         // rendering
         var count = 0;
         var aspect = 1.0;
@@ -720,69 +720,24 @@
 
         // rendering loop
         function render(){
-            // frame update
             updater();
 
-            switch(true){
-                default:
-                    sceneFunctions[1]();
-                    break;
+            if(nowTime < 100.0){
+                switch(true){
+                    case nowTime < 5.0:
+                        sceneFunctions[0]();
+                        break;
+                    default:
+                        sceneFunctions[1]();
+                        break;
+                }
+            }else{
+                run = false;
             }
 
             gl.flush();
             if(run){requestAnimationFrame(render);}
         }
-
-        // scene functions ====================================================
-        sceneFunctions[0] = function(){
-            // ----------------------------------------------------------------
-            // scene 0: default scene(gpgpu particle animation and camera move)
-            //  clearAlpha: 0.8, effectmode: null
-            //  gpgpu: true, floor: false, flower: false, algae: false, wave: false
-            //  origin: true, blur: false, mosaic: false, atan: false
-            // ----------------------------------------------------------------
-            qtn.identity(qt);
-            qtn.rotate((nowTime * 0.5) % gl3.PI2, [0.0, -1.0, 0.0], qt);
-            qtn.toVecIII(cameraPosition, qt, cameraPosition);
-            qtn.toVecIII(cameraUpDirection, qt, cameraUpDirection);
-            camera = gl3.camera.create(
-                cameraPosition,
-                centerPoint,
-                cameraUpDirection,
-                60, aspect, 5.0, 100.0
-            );
-            mat4.vpFromCamera(camera, vMatrix, pMatrix, vpMatrix);
-            gl.bindFramebuffer(gl.FRAMEBUFFER, smallBuffer.framebuffer);
-            gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
-
-            gpuUpdateFlag = gpgpuAnimation = true;
-            sceneRender(0.8, null, true, false, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
-            sceneRender(0.8, null, true, false, false, false, false, FRAMEBUFFER_SIZE, null, null);
-            finalSceneRender(true, false, false, false, null);
-        };
-        sceneFunctions[1] = function(){
-            // ----------------------------------------------------------------
-            // scene 1: test scene(point floor and effect mode check)
-            // ----------------------------------------------------------------
-            qtn.identity(qt);
-            qtn.rotate((nowTime * 0.5) % gl3.PI2, [0.0, -1.0, 0.0], qt);
-            qtn.toVecIII(cameraPosition, qt, cameraPosition);
-            qtn.toVecIII(cameraUpDirection, qt, cameraUpDirection);
-            camera = gl3.camera.create(
-                cameraPosition,
-                centerPoint,
-                cameraUpDirection,
-                60, aspect, 5.0, 100.0
-            );
-            mat4.vpFromCamera(camera, vMatrix, pMatrix, vpMatrix);
-            gl.bindFramebuffer(gl.FRAMEBUFFER, smallBuffer.framebuffer);
-            gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
-
-            gpuUpdateFlag = gpgpuAnimation = false;
-            sceneRender(0.8, 3, false, true, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
-            sceneRender(0.8, 3, false, true, false, false, false, FRAMEBUFFER_SIZE, null, null);
-            finalSceneRender(true, false, false, false, null);
-        };
 
         // sub function =======================================================
         function updater(){
@@ -1036,6 +991,58 @@
             ptPrg.push_shader([particleMatrix, nowTime, PARTICLE_FLOOR_WIDTH / 2.0, size, color, 1]);
             gl3.draw_arrays(gl.POINTS, particlePosition.length / 3);
         }
+
+        // scene functions ====================================================
+        sceneFunctions[0] = function(){
+            // ----------------------------------------------------------------
+            // scene 0: default scene(gpgpu particle animation and camera move)
+            //  clearAlpha: 0.8, effectmode: null
+            //  gpgpu: true, floor: false, flower: false, algae: false, wave: false
+            //  origin: true, blur: false, mosaic: false, atan: false
+            // ----------------------------------------------------------------
+            qtn.identity(qt);
+            qtn.rotate((nowTime * 0.5) % gl3.PI2, [0.0, -1.0, 0.0], qt);
+            qtn.toVecIII(cameraPosition, qt, cameraPosition);
+            qtn.toVecIII(cameraUpDirection, qt, cameraUpDirection);
+            camera = gl3.camera.create(
+                cameraPosition,
+                centerPoint,
+                cameraUpDirection,
+                60, aspect, 5.0, 100.0
+            );
+            mat4.vpFromCamera(camera, vMatrix, pMatrix, vpMatrix);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, smallBuffer.framebuffer);
+            gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
+
+            gpuUpdateFlag = gpgpuAnimation = true;
+            sceneRender(0.8, null, true, false, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
+            sceneRender(0.8, null, true, false, false, false, false, FRAMEBUFFER_SIZE, null, null);
+            finalSceneRender(true, false, false, false, null);
+        };
+        sceneFunctions[1] = function(){
+            // ----------------------------------------------------------------
+            // scene 1: test scene(point floor and effect mode check)
+            // ----------------------------------------------------------------
+            qtn.identity(qt);
+            qtn.rotate((nowTime * 0.5) % gl3.PI2, [0.0, -1.0, 0.0], qt);
+            qtn.toVecIII(cameraPosition, qt, cameraPosition);
+            qtn.toVecIII(cameraUpDirection, qt, cameraUpDirection);
+            camera = gl3.camera.create(
+                cameraPosition,
+                centerPoint,
+                cameraUpDirection,
+                60, aspect, 5.0, 100.0
+            );
+            mat4.vpFromCamera(camera, vMatrix, pMatrix, vpMatrix);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, smallBuffer.framebuffer);
+            gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
+
+            gpuUpdateFlag = gpgpuAnimation = false;
+            sceneRender(0.8, 3, false, true, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
+            sceneRender(0.8, 3, false, true, false, false, false, FRAMEBUFFER_SIZE, null, null);
+            finalSceneRender(true, false, false, false, null);
+        };
+
         render();
     }
 
