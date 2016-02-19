@@ -618,6 +618,7 @@
 
         // quaternion
         var qt = qtn.identity(qtn.create());
+        var qtt = qtn.identity(qtn.create());
         var pqt  = qtn.identity(qtn.create());
         var pqtx = qtn.identity(qtn.create());
         var pqtz = qtn.identity(qtn.create());
@@ -735,11 +736,13 @@
                         sceneFunctions[3]();
                         // [4] floor move to positive Z
                         sceneFunctions[4]();
+                        // [5] dive to floor and white out
+                        sceneFunctions[5]();
                         // ====================================================
                         break;
                     default:
                         // @@@
-                        // [4] floor move to negative Z
+                        // [5] dive to floor
                         sceneFunctions[sceneFunctions.length - 1]();
                         break;
                 }
@@ -793,7 +796,7 @@
             ePrg.set_program();
             ePrg.set_attribute(planeVBO, planeIBO);
             switch(mode){
-                case 0: // center to corner circle (dark blue)
+                case 0: // center to corner circle (dark blue) @@@
                     effectmode = mode;
                     firstColor = [0.1, 0.2, 0.3, 0.5];
                     secondColor = [0.0, 0.0, 0.0, 0.5];
@@ -868,7 +871,7 @@
                 gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
             }
             if(atan){
-                color = globalColor || [0.1, 0.3, 1.0, 1.0];
+                color = globalColor || [0.5, 0.3, 1.0, 1.0];
                 fPrg.push_shader([color, 5, 5, 2, nowTime]);  // atan layer
                 gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
             }
@@ -1078,8 +1081,11 @@
             //  origin: true, blur: true, mosaic: false, atan: false
             // ----------------------------------------------------------------
             qtn.identity(qt);
+            qtn.identity(qtt);
             qtn.rotate((nowTime * 2.0) % gl3.PI2, [0.0, 1.0, 0.0], qt);
-            cameraPosition[1] = Math.sin((nowTime * 0.75) % gl3.PI2) * 25.0;
+            qtn.rotate((nowTime * 2.0) % gl3.PI2, [0.707, 0.0, 0.707], qtt);
+            qtn.slerp(qt, qtt, (Math.sin(nowTime * 1.0) + 1.0) / 2.0, qt);
+            cameraPosition[2] *= 1.0;
             qtn.toVecIII(cameraPosition, qt, cameraPosition);
             qtn.toVecIII(cameraUpDirection, qt, cameraUpDirection);
             camera = gl3.camera.create(
@@ -1117,6 +1123,41 @@
             gpuUpdateFlag = gpgpuAnimation = false;
             sceneRender(0.8, 2, false, true, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
             sceneRender(0.8, 2, false, true, false, false, false, FRAMEBUFFER_SIZE, null, null);
+            finalSceneRender(true, true, false, false, null);
+        };
+        sceneFunctions[5] = function(){
+            // ----------------------------------------------------------------
+            // scene 5: particle floor (wave animation and camera dive in)
+            //  clearAlpha: 0.8, effectmode: 0
+            //  gpgpu: false, floor: true, flower: false, algae: false, wave: false
+            //  origin: true, blur: true, mosaic: false, atan: false
+            // ----------------------------------------------------------------
+            var i, j;
+            qtn.identity(qt);
+            qtn.identity(qtt);
+            qtn.rotate(nowTime % gl3.PI2, [0.0, 1.0, 0.0], qt);
+            qtn.rotate(gl3.PI2 + gl3.PIH / 2.0, [1.0, 0.0, 0.0], qtt);
+            qtn.slerp(qt, qtt, gl3.util.easeOutCubic(Math.min(nowTime * 0.2, 1.0)), qt);
+            j = 0.0;
+            if(nowTime > 5.0){
+                i = gl3.util.easeOutCubic(Math.min((nowTime - 5.0) * 0.2, 1.0));
+                j += i * 2.0;
+                cameraPosition[1] = DEFAULT_CAM_POSITION[1] - DEFAULT_CAM_POSITION[1] * (nowTime - 5.0) * i;
+                cameraPosition[2] = DEFAULT_CAM_POSITION[2] - DEFAULT_CAM_POSITION[2] * (nowTime - 5.0) * i;
+            }
+            qtn.toVecIII(cameraPosition, qt, cameraPosition);
+            qtn.toVecIII(cameraUpDirection, qt, cameraUpDirection);
+            camera = gl3.camera.create(
+                cameraPosition, centerPoint, cameraUpDirection,
+                60, aspect, 5.0, 100.0
+            );
+            mat4.vpFromCamera(camera, vMatrix, pMatrix, vpMatrix);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, smallBuffer.framebuffer);
+            gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
+
+            gpuUpdateFlag = gpgpuAnimation = false;
+            sceneRender(0.8 - j, 0, false, true, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
+            sceneRender(0.8 - j, 0, false, true, false, false, false, FRAMEBUFFER_SIZE, null, null);
             finalSceneRender(true, true, false, false, null);
         };
 
