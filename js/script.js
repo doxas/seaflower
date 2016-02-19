@@ -728,15 +728,19 @@
                     case nowTime > 100.0:
                         run = false;
                         // ====================================================
-                        // floor and camera rotate
+                        // [2] floor and camera rotate
                         i = (nowTime / 10.0) % 1.0;
-                        sceneFunctions[sceneFunctions.length - 1](i);
+                        sceneFunctions[2](i);
+                        // [3] floor updown and camera rotate
+                        sceneFunctions[3]();
+                        // [4] floor move to positive Z
+                        sceneFunctions[4]();
                         // ====================================================
                         break;
                     default:
                         // @@@
-                        i = (nowTime / 10.0) % 1.0;
-                        sceneFunctions[sceneFunctions.length - 1](i);
+                        // [4] floor move to negative Z
+                        sceneFunctions[sceneFunctions.length - 1]();
                         break;
                 }
             }else{
@@ -1013,9 +1017,7 @@
             qtn.toVecIII(cameraPosition, qt, cameraPosition);
             qtn.toVecIII(cameraUpDirection, qt, cameraUpDirection);
             camera = gl3.camera.create(
-                cameraPosition,
-                centerPoint,
-                cameraUpDirection,
+                cameraPosition, centerPoint, cameraUpDirection,
                 60, aspect, 5.0, 100.0
             );
             mat4.vpFromCamera(camera, vMatrix, pMatrix, vpMatrix);
@@ -1081,9 +1083,31 @@
             qtn.toVecIII(cameraPosition, qt, cameraPosition);
             qtn.toVecIII(cameraUpDirection, qt, cameraUpDirection);
             camera = gl3.camera.create(
-                cameraPosition,
-                centerPoint,
-                cameraUpDirection,
+                cameraPosition, centerPoint, cameraUpDirection,
+                60, aspect, 5.0, 100.0
+            );
+            mat4.vpFromCamera(camera, vMatrix, pMatrix, vpMatrix);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, smallBuffer.framebuffer);
+            gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
+
+            gpuUpdateFlag = gpgpuAnimation = false;
+            sceneRender(0.8, 2, false, true, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
+            sceneRender(0.8, 2, false, true, false, false, false, FRAMEBUFFER_SIZE, null, null);
+            finalSceneRender(true, true, false, false, null);
+        };
+        sceneFunctions[4] = function(){
+            // ----------------------------------------------------------------
+            // scene 4: particle floor (wave animation and move to positive Z)
+            //  clearAlpha: 0.8, effectmode: 2
+            //  gpgpu: false, floor: true, flower: false, algae: false, wave: false
+            //  origin: true, blur: true, mosaic: false, atan: false
+            // ----------------------------------------------------------------
+            qtn.identity(qt);
+            qtn.rotate(gl3.PIH * 1.5 + 0.01, [0.0, 1.0, 0.0], qt);
+            qtn.toVecIII(cameraPosition, qt, cameraPosition);
+            qtn.toVecIII(cameraUpDirection, qt, cameraUpDirection);
+            camera = gl3.camera.create(
+                cameraPosition, centerPoint, cameraUpDirection,
                 60, aspect, 5.0, 100.0
             );
             mat4.vpFromCamera(camera, vMatrix, pMatrix, vpMatrix);
