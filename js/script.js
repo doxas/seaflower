@@ -703,16 +703,25 @@
         var camera;
         var gpgpu = true;
         var particleTarget = [];
+        var sceneFunctions = [];
 //        gl3.audio.src[0].play();
 
-        render();
+        // rendering loop
         function render(){
             // frame update
             updater();
 
+            sceneFunctions[0]();
+
+            gl.flush();
+            if(run){requestAnimationFrame(render);}
+        }
+
+        // scene functions ====================================================
+        sceneFunctions[0] = function(){
             // perspective projection
             qtn.identity(qt);
-            qtn.rotate((nowTime * 0.5) % gl3.PI2, [0.0, 1.0, 0.0], qt);
+            qtn.rotate((nowTime * 0.5) % gl3.PI2, [0.0, -1.0, 0.0], qt);
             qtn.toVecIII(cameraPosition, qt, cameraPosition);
             qtn.toVecIII(cameraUpDirection, qt, cameraUpDirection);
             camera = gl3.camera.create(
@@ -730,36 +739,10 @@
             // scene render to small buffer and framebuffer
             sceneRender(SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
             sceneRender(FRAMEBUFFER_SIZE, null, null);
+            finalSceneRender();
+        };
 
-            // horizon gauss render to fBuffer ================================
-            gaussHorizon();
-
-            // vertical gauss render to fBuffer
-            gaussVertical();
-
-            // final scene ====================================================
-            fPrg.set_program();
-            fPrg.set_attribute(planeVBO, planeIBO);
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-            gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
-            gl.viewport(0, 0, canvasWidth, canvasHeight);
-            fPrg.push_shader([[1.0, 1.0, 1.0, 1.0], 4, 5, 0, nowTime]);  // original scene
-            gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
-            // fPrg.push_shader([[1.0, 1.0, 1.0, 0.25], 8, 5, 1, nowTime]); // mosaic layer
-            // gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
-            // fPrg.push_shader([[0.1, 0.3, 1.0, 1.0], 5, 5, 2, nowTime]);  // atan layer
-            // gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
-            // fPrg.push_shader([[1.5, 1.5, 1.5, 0.75], 7, 5, 0, nowTime]); // blur layer
-            // gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
-
-            // particle wave ==================================================
-//            particleWaveRender(64.0, [0.3, 0.8, 1.0, 0.8]);
-
-            gl.flush();
-            if(run){requestAnimationFrame(render);}
-        }
-
-        // sub function =============================================
+        // sub function =======================================================
         function updater(){
             var i;
             count++;
@@ -785,6 +768,7 @@
             cameraUpDirection[1] = DEFAULT_CAM_UP[1];
             cameraUpDirection[2] = DEFAULT_CAM_UP[2];
         }
+        // scene clear
         function clearRender(alpha){
             var clearColor = [0.0, 0.0, 0.0, alpha];
             lPrg.set_program();
@@ -795,26 +779,39 @@
             gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE, gl.ONE, gl.ONE);
         }
         function sceneRender(resolution, nowBindBuffer, nowViewport){
-            // render to frame buffer =========================================
             if(!nowBindBuffer){
                 gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer.framebuffer);
                 gl.viewport(0, 0, FRAMEBUFFER_SIZE, FRAMEBUFFER_SIZE);
             }else{if(gpgpu){gpgpuSceneUpdate();}}
 
-            // scene clear
             clearRender(0.8);
 
-            // gpgpu particle render
             gpgpuRender(particleTarget, 0.02, 0.15, [1.0, 0.05, 0.1, 1.0], nowBindBuffer, nowViewport);
 
-            // point floor wave
             // pointFloor(cameraPosition, nowTime, 10.0, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);
 
-            // off screen - seaflower
             // seaFlower([0.0, -8.0, 0.0], [resolution, resolution], false);
 
-            // off screen - seaalgae
             // seaAlgae([0.0, -8.0, 0.0], [resolution, resolution], false);
+        }
+        function finalSceneRender(){
+            // gauss render
+            gaussHorizon();
+            gaussVertical();
+
+            fPrg.set_program();
+            fPrg.set_attribute(planeVBO, planeIBO);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            gl3.scene_clear([0.0, 0.0, 0.0, 1.0], 1.0);
+            gl.viewport(0, 0, canvasWidth, canvasHeight);
+            fPrg.push_shader([[1.0, 1.0, 1.0, 1.0], 4, 5, 0, nowTime]);  // original scene
+            gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+            // fPrg.push_shader([[1.0, 1.0, 1.0, 0.25], 8, 5, 1, nowTime]); // mosaic layer
+            // gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+            // fPrg.push_shader([[0.1, 0.3, 1.0, 1.0], 5, 5, 2, nowTime]);  // atan layer
+            // gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+            // fPrg.push_shader([[1.5, 1.5, 1.5, 0.75], 7, 5, 0, nowTime]); // blur layer
+            // gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
         }
         function gpgpuSceneUpdate(){
             var i, j;
@@ -830,6 +827,7 @@
             passiveVertexIndex = activeVertexIndex;
             return activeVertexIndex === 0 ? 1 : 0;
         }
+        // gpgpu particle render
         function gpgpuRender(target, power, speed, globalColor, nowBindBuffer, nowViewport){
             if(!gpuUpdateFlag){
                 gpgpuUpdate(target, power, speed);
@@ -867,6 +865,7 @@
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
             gl.enable(gl.BLEND);
         }
+        // off screen - seaflower
         function seaFlower(offset, resolution, isPoint){
             prg.set_program();
             set_attribute_angle(seaVBO, prg.attL, prg.attS, seaExt, seaIBO);
@@ -878,6 +877,7 @@
             prg.push_shader([rotateMatrix, mMatrix, mvpMatrix, cameraPosition, nowTime, 0, [1.0, 1.0, 1.0, 1.0], resolution]);
             seaFlowerDraw(isPoint);
         }
+        // off screen - seaalgae
         function seaAlgae(offset, resolution, isPoint){
             prg.set_program();
             set_attribute_angle(algaeVBO, prg.attL, prg.attS, seaExt, algaeIBO);
@@ -914,6 +914,7 @@
             }
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
         }
+        // point floor wave
         function pointFloor(eye, speed, height, scale, color){
 //            gl.disable(gl.DEPTH_TEST);
 //            gl.depthMask(true);
@@ -950,6 +951,7 @@
             ptPrg.push_shader([particleMatrix, nowTime, PARTICLE_FLOOR_WIDTH / 2.0, size, color, 1]);
             gl3.draw_arrays(gl.POINTS, particlePosition.length / 3);
         }
+        render();
     }
 
     function gaussWeight(resolution, power){
