@@ -725,7 +725,7 @@
         sceneFunctions[0] = function(){
             // ----------------------------------------------------------------
             // scene 0: default scene(gpgpu particle animation and camera move)
-            //  gpgpu: true, floor: false, flower: false, algae: false
+            //  gpgpu: true, floor: false, flower: false, algae: false, wave: false
             //  origin: true, blur: false, mosaic: false, atan: false
             // ----------------------------------------------------------------
             qtn.identity(qt);
@@ -745,8 +745,8 @@
             // scene render to small buffer and framebuffer
             gpuUpdateFlag = true;
             gpgpuAnimation = true;
-            sceneRender(true, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
-            sceneRender(true, false, false, false, FRAMEBUFFER_SIZE, null, null);
+            sceneRender(true, false, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
+            sceneRender(true, false, false, false, false, FRAMEBUFFER_SIZE, null, null);
             finalSceneRender(true, false, false, false, null);
         };
 
@@ -787,7 +787,7 @@
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
             gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE, gl.ONE, gl.ONE);
         }
-        function sceneRender(gpgpu, pointfloor, seaflower, seaalgae, resolution, nowBindBuffer, nowViewport){
+        function sceneRender(gpgpu, pointfloor, seaflower, seaalgae, wave, resolution, nowBindBuffer, nowViewport){
             if(!nowBindBuffer){
                 gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer.framebuffer);
                 gl.viewport(0, 0, FRAMEBUFFER_SIZE, FRAMEBUFFER_SIZE);
@@ -800,6 +800,7 @@
             if(pointfloor){pointFloor(cameraPosition, nowTime, 10.0, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);}
             if(seaflower){seaFlower([0.0, -8.0, 0.0], [resolution, resolution], false);}
             if(seaalgae){seaAlgae([0.0, -8.0, 0.0], [resolution, resolution], false);}
+            if(wave){particleWaveRender(64.0, [0.3, 0.8, 1.0, 1.0]);}
         }
         function finalSceneRender(original, blur, mosaic, atan, globalColor){
             var color;
@@ -854,7 +855,7 @@
             grPrg.set_program();
             grPrg.set_attribute(gpgpuVBO, null);
             grPrg.push_shader([
-                vpMatrix, GPGPU_FRAMEBUFFER_SIZE, 12.0,
+                vpMatrix, GPGPU_FRAMEBUFFER_SIZE, 16.0,
                 gpgpuPositionBuffer[activeVertexIndex].textureIndex, 0, globalColor
             ]);
             gl3.draw_arrays(gl.POINTS, gpgpuIndex.length);
@@ -933,8 +934,6 @@
         }
         // point floor wave
         function pointFloor(eye, speed, height, scale, color){
-//            gl.disable(gl.DEPTH_TEST);
-//            gl.depthMask(true);
             pPrg.set_program();
             pPrg.set_attribute(floorVBO, null);
             mat4.identity(mMatrix);
