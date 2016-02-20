@@ -838,6 +838,11 @@
                     firstColor = [0.2, 0.15, 0.0, 0.5];
                     secondColor = [0.0, 0.25, 0.0, 0.5];
                     break;
+                case 6: // top to corner circle (deep darker)
+                    effectmode = 1;
+                    firstColor = [0.05, 0.0, 0.0, 0.5];
+                    secondColor = [0.0, 0.0, 0.05, 0.5];
+                    break;
                 default:
                     effectmode = 0;
                     firstColor = [0.0, 0.0, 0.0, 1.0];
@@ -1242,6 +1247,45 @@
             sceneRender(0.2 + power, 2, true, false, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE, gpgpuParam);
             sceneRender(0.2 + power, 2, true, false, false, false, false, FRAMEBUFFER_SIZE, null, null, gpgpuParam);
             finalSceneRender(true, false, false, false, null);
+        };
+        sceneFunctions[12] = function(){
+            // ----------------------------------------------------------------
+            // scene 12: gpgpu scene (move to negative Z)
+            //  clearAlpha: 0.8, effectmode: 3
+            //  gpgpu: true, floor: false, flower: false, algae: false, wave: false
+            //  origin: true, blur: false, mosaic: false, atan: false
+            //  ※要パーティクルの初期位置検討
+            // ----------------------------------------------------------------
+            var s, c, t;
+            t = nowTime * 20.0;
+            cameraPosition[0] = 0.0;
+            cameraPosition[1] = 0.0;
+            cameraPosition[2] = cameraPosition[2] + 30.0;
+            centerPoint[2] = centerPoint[2] + 0.0 - t;
+            qtn.identity(qt);
+            qtn.rotate(gl3.util.easeOutCubic(Math.min(nowTime * 0.2, 1.0)) * gl3.PIH, [0.0, -1.0, 0.0], qt);
+            qtn.toVecIII(cameraPosition, qt, cameraPosition);
+            cameraPosition[2] -= t;
+            camera = gl3.camera.create(
+                cameraPosition, centerPoint, cameraUpDirection,
+                90, aspect, 1.0, 200.0
+            );
+            mat4.vpFromCamera(camera, vMatrix, pMatrix, vpMatrix);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, smallBuffer.framebuffer);
+            gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
+
+            gpuUpdateFlag = gpgpuAnimation = true;
+            s = Math.sin(nowTime * 2.5) * 7.0;
+            c = Math.cos(nowTime * 3.0) * 7.0;
+            var gpgpuParam = {
+                target: [s, c, -30.0 - t],
+                power: 0.05,
+                speed: 1.75,
+                globalColor: [0.05, 0.25, 1.0, 0.25]
+            };
+            sceneRender(0.6, 6, true, false, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE, gpgpuParam);
+            sceneRender(0.6, 6, true, false, false, false, false, FRAMEBUFFER_SIZE, null, null, gpgpuParam);
+            finalSceneRender(true, true, false, false, null);
         };
 
         // @@@
