@@ -214,8 +214,8 @@
             'shader/base.frag',
             ['position', 'normal', 'disc', 'color', 'iPosition', 'iColor', 'iFlag'],
             [3, 3, 3, 4, 3, 4, 4],
-            ['rMatrix', 'mMatrix', 'mvpMatrix', 'eyePosition', 'time', 'mode', 'globalColor', 'resolution'],
-            ['matrix4fv', 'matrix4fv', 'matrix4fv', '3fv', '1f', '1i', '4fv', '2fv'],
+            ['rMatrix', 'mMatrix', 'mvpMatrix', 'eyePosition', 'time', 'mode', 'globalColor', 'resolution', 'isMono'],
+            ['matrix4fv', 'matrix4fv', 'matrix4fv', '3fv', '1f', '1i', '4fv', '2fv', '1i'],
             shaderLoadCheck
         );
 
@@ -718,14 +718,14 @@
         var camera;
         var particleTarget = [];
         var sceneFunctions = [];
-        setTimeout(function(){gl3.audio.src[0].play();}, 2000);
+        // setTimeout(function(){gl3.audio.src[0].play();}, 2000);
 
         // rendering loop
         function render(){
             var i;
             updater();
 
-            if(times < 300.0){
+            if(times < 68.5){
                 switch(true){
                     case times < 2.0:
                         sceneFunctions[6](0.0);
@@ -758,7 +758,30 @@
                     case times < 68.5:
                         sceneFunctions[5](61.5);
                         break;
-                    case times > 300.0:
+                }
+            }else if(times < 93.5){
+                switch(true){
+                    default:
+                        break;
+                }
+            }else if(times < 129.65){
+                switch(true){
+                    default:
+                        break;
+                }
+            }else if(times < 162.8){
+                switch(true){
+                    default:
+                        break;
+                }
+            }else{
+                switch(true){
+                    case times >= 200.0:
+                        // @@@
+                        // [0]
+                        sceneFunctions[sceneFunctions.length - 1]();
+                        break;
+                    default:
                         run = false;
                         // ====================================================
                         // [10] gpgpu rotate (pink front back purple)
@@ -775,14 +798,7 @@
                         sceneFunctions[21]();
                         // ====================================================
                         break;
-                    default:
-                        // @@@
-                        // [0]
-                        sceneFunctions[0](1.0);
-                        break;
                 }
-            }else{
-                run = false;
             }
 
             gl.flush();
@@ -793,7 +809,7 @@
         function updater(){
             var i;
             count++;
-            times = (Date.now() - beginTime) / 1000;
+            times = (Date.now() - beginTime) / 1000 + 200.0;
             gpuUpdateFlag = false;
             gpgpuAnimation = false;
             gl3.audio.src[0].update = true;
@@ -880,7 +896,7 @@
             ePrg.push_shader([effectmode, FRAMEBUFFER_SIZE, firstColor, secondColor]);
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
         }
-        function sceneRender(alpha, effectMode, gpgpu, pointfloor, seaflower, seaalgae, wave, resolution, nowBindBuffer, nowViewport, gpgpuParam, floorParam){
+        function sceneRender(alpha, effectMode, gpgpu, pointfloor, seaflower, seaalgae, wave, resolution, nowBindBuffer, nowViewport, gpgpuParam, floorParam, flowerParam){
             if(!nowBindBuffer){
                 gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer.framebuffer);
                 gl.viewport(0, 0, FRAMEBUFFER_SIZE, FRAMEBUFFER_SIZE);
@@ -893,9 +909,16 @@
 
             if(gpgpu){gpgpuRender(gpgpuParam, nowBindBuffer, nowViewport);}
             var f = floorParam == null ? 1.0 : floorParam;
+            var g = 0;
             if(pointfloor){pointFloor(cameraPosition, times, 10.0, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, f]);}
-            if(seaflower){seaFlower([0.0, -8.0, 0.0], [resolution, resolution], false);}
-            if(seaalgae){seaAlgae([0.0, -8.0, 0.0], [resolution, resolution], false);}
+            if(flowerParam != null){
+                f = flowerParam.mono;
+                g += flowerParam.mode;
+            }else{
+                f = false;
+            }
+            if(seaflower){seaFlower([0.0, -8.0, 0.0], [resolution, resolution], false, f, g, [1.0, 1.0, 1.0, 1.0]);}
+            if(seaalgae){seaAlgae([0.0, -8.0, 0.0], [resolution, resolution], false, f, g, [1.0, 1.0, 1.0, 1.0]);}
             if(wave){particleWaveRender(32.0, [0.3, 0.8, 1.0, 1.0]);}
         }
         function finalSceneRender(original, blur, mosaic, atan, globalColor){
@@ -998,27 +1021,27 @@
             gl.enable(gl.BLEND);
         }
         // off screen - seaflower
-        function seaFlower(offset, resolution, isPoint){
+        function seaFlower(offset, resolution, isPoint, isMono, mode, globalColor){
             prg.set_program();
             set_attribute_angle(seaVBO, prg.attL, prg.attS, seaExt, seaIBO);
             mat4.identity(mMatrix);
             mat4.translate(mMatrix, offset, mMatrix);
             mat4.identity(rotateMatrix);
-            mat4.rotate(rotateMatrix, (times * 0.5) % gl3.PI2, [0.0, 1.0, 0.0], rotateMatrix);
+            if(mode > 0){mat4.rotate(rotateMatrix, (times * 0.5) % gl3.PI2, [0.0, 1.0, 0.0], rotateMatrix);}
             mat4.multiply(vpMatrix, mMatrix, mvpMatrix);
-            prg.push_shader([rotateMatrix, mMatrix, mvpMatrix, cameraPosition, times, 0, [1.0, 1.0, 1.0, 1.0], resolution]);
+            prg.push_shader([rotateMatrix, mMatrix, mvpMatrix, cameraPosition, times, mode, globalColor, resolution, isMono]);
             seaFlowerDraw(isPoint);
         }
         // off screen - seaalgae
-        function seaAlgae(offset, resolution, isPoint){
+        function seaAlgae(offset, resolution, isPoint, isMono, mode, globalColor){
             prg.set_program();
             set_attribute_angle(algaeVBO, prg.attL, prg.attS, seaExt, algaeIBO);
             mat4.identity(mMatrix);
             mat4.translate(mMatrix, offset, mMatrix);
             mat4.identity(rotateMatrix);
-            mat4.rotate(rotateMatrix, (times * 0.5) % gl3.PI2, [0.0, 1.0, 0.0], rotateMatrix);
+            if(mode > 1){mat4.rotate(rotateMatrix, (times * 0.5) % gl3.PI2, [0.0, -1.0, 0.0], rotateMatrix);}
             mat4.multiply(vpMatrix, mMatrix, mvpMatrix);
-            prg.push_shader([rotateMatrix, mMatrix, mvpMatrix, cameraPosition, times, 1, [1.0, 1.0, 1.0, 1.0], resolution]);
+            prg.push_shader([rotateMatrix, mMatrix, mvpMatrix, cameraPosition, times, mode + 1, globalColor, resolution, isMono]);
             seaAlgaeDraw(isPoint);
         }
         function seaFlowerDraw(isPoint){
@@ -1420,8 +1443,8 @@
             gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
 
             gpuUpdateFlag = gpgpuAnimation = false;
-            sceneRender(0.5, 2, false, false, true, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
-            sceneRender(0.5, 2, false, false, true, false, false, FRAMEBUFFER_SIZE, null, null);
+            sceneRender(0.5, 2, false, false, true, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE, null, null, {mode: 2, mono: false});
+            sceneRender(0.5, 2, false, false, true, false, false, FRAMEBUFFER_SIZE, null, null, null, null, {mode: 2, mono: false});
             finalSceneRender(true, true, false, false, null);
         };
         sceneFunctions[21] = function(){
@@ -1434,7 +1457,7 @@
             qtn.identity(qt);
             qtn.rotate((times * 0.05) % gl3.PI2, [0.0, 1.0, 0.0], qt);
             cameraPosition[0] = 0.0;
-            cameraPosition[1] = 3.0;
+            cameraPosition[1] = 5.0;
             cameraPosition[2] = 10.0;
             cameraUpDirection = cameraUpVector(cameraPosition, centerPoint);
             qtn.toVecIII(cameraPosition, qt, cameraPosition);
@@ -1448,9 +1471,65 @@
             gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
 
             gpuUpdateFlag = gpgpuAnimation = false;
-            sceneRender(0.5, 5, false, false, false, true, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
-            sceneRender(0.5, 5, false, false, false, true, false, FRAMEBUFFER_SIZE, null, null);
+            sceneRender(0.5, 5, false, false, false, true, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE, null, null, {mode: 2, mono: false});
+            sceneRender(0.5, 5, false, false, false, true, false, FRAMEBUFFER_SIZE, null, null, null, null, {mode: 2, mono: false});
             finalSceneRender(true, true, false, false, null);
+        };
+        sceneFunctions[22] = function(){
+            // ----------------------------------------------------------------
+            // scene 22: flower monochrome none animation
+            //  clearAlpha: 0.9, effectmode: 7
+            //  gpgpu: false, floor: false, flower: true, algae: false, wave: false
+            //  origin: true, blur: false, mosaic: false, atan: false
+            // ----------------------------------------------------------------
+            qtn.identity(qt);
+            qtn.rotate((times * 0.05) % gl3.PI2, [0.0, 1.0, 0.0], qt);
+            cameraPosition[0] = 0.0;
+            cameraPosition[1] = 5.0;
+            cameraPosition[2] = 10.0;
+            cameraUpDirection = cameraUpVector(cameraPosition, centerPoint);
+            qtn.toVecIII(cameraPosition, qt, cameraPosition);
+            qtn.toVecIII(cameraUpDirection, qt, cameraUpDirection);
+            camera = gl3.camera.create(
+                cameraPosition, centerPoint, cameraUpDirection,
+                45, aspect, 5.0, 100.0
+            );
+            mat4.vpFromCamera(camera, vMatrix, pMatrix, vpMatrix);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, smallBuffer.framebuffer);
+            gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
+
+            gpuUpdateFlag = gpgpuAnimation = false;
+            sceneRender(0.9, 7, false, false, true, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE, null, null, {mode: 0, mono: true});
+            sceneRender(0.9, 7, false, false, true, false, false, FRAMEBUFFER_SIZE, null, null, null, null, {mode: 0, mono: true});
+            finalSceneRender(true, false, false, false, null);
+        };
+        sceneFunctions[23] = function(){
+            // ----------------------------------------------------------------
+            // scene 23: algae monochrome none animation
+            //  clearAlpha: 0.9, effectmode: 7
+            //  gpgpu: false, floor: false, flower: true, algae: false, wave: false
+            //  origin: true, blur: false, mosaic: false, atan: false
+            // ----------------------------------------------------------------
+            qtn.identity(qt);
+            qtn.rotate((times * 0.05) % gl3.PI2, [0.0, 1.0, 0.0], qt);
+            cameraPosition[0] = 0.0;
+            cameraPosition[1] = 5.0;
+            cameraPosition[2] = 10.0;
+            cameraUpDirection = cameraUpVector(cameraPosition, centerPoint);
+            qtn.toVecIII(cameraPosition, qt, cameraPosition);
+            qtn.toVecIII(cameraUpDirection, qt, cameraUpDirection);
+            camera = gl3.camera.create(
+                cameraPosition, centerPoint, cameraUpDirection,
+                45, aspect, 5.0, 100.0
+            );
+            mat4.vpFromCamera(camera, vMatrix, pMatrix, vpMatrix);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, smallBuffer.framebuffer);
+            gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
+
+            gpuUpdateFlag = gpgpuAnimation = false;
+            sceneRender(0.9, 7, false, false, false, true, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE, null, null, {mode: 0, mono: true});
+            sceneRender(0.9, 7, false, false, false, true, false, FRAMEBUFFER_SIZE, null, null, null, null, {mode: 0, mono: true});
+            finalSceneRender(true, false, false, false, null);
         };
 
         // @@@

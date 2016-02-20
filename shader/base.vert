@@ -24,18 +24,19 @@ float fog(float v){
     return (sin(f * PI * 2.0 - DEG) + 1.0) * 0.5;
 }
 void main(){
-    vec3 q = vec3(0.0);
+    vec3 q = position;
     float f = mod((time + iFlag.z * 4.0) * 0.25, 1.0) * 2.0;
-    if(mode == 0){
-        if(time > 0.0){
+    float g = 0.0;
+    if(mode == 0 || mode == 2){
+        if(mode == 2){
             float y = sin(time * (iFlag.x + 1.0) * 0.5);
             float s = (y + 1.0) * 0.5;
             float d = s * disc.z * 5.0 * (1.0 + iFlag.y);
             q = position + vec3(disc.x, 0.5 - y, disc.y) * vec3(d, disc.z * 2.0, d);
-            f = 0.25 / ((normal.y + 1.0) - f);
+            g = 0.25 / ((normal.y + 1.0) - f);
         }
     }else{
-        if(time > 0.0){
+        if(mode == 3){
             float t = time * (iFlag.x + 1.0) * 5.0;
             float si = sin(t * disc.y);
             float co = cos(t * disc.y);
@@ -43,7 +44,7 @@ void main(){
             mat2 m = mat2(co, si, -si, co);
             vec2 v = m * position.xz;
             q = vec3(v.x, position.y + bl, v.y);
-            f = 0.25 / ((disc.y + 1.0) - f);
+            g = 0.25 / ((disc.y + 1.0) - f);
         }
     }
     vec3 n = normal;
@@ -51,7 +52,7 @@ void main(){
     gl_Position = mvpMatrix * vec4(p, 1.0);
     gl_PointSize = 1.0;
     vColor = vec4(iColor.rgb, 1.0) * globalColor * color;
-    vLight = max(f * 2.5, 1.0);
+    vLight = max(g * 2.5, 1.0);
     vec4 model = mMatrix * vec4(p, 1.0);
     vFog = fog(length(model.xyz - eyePosition));
 }
