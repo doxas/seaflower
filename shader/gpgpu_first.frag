@@ -35,6 +35,12 @@ void main(){
     }else if(mode == 1){
         // position and param
         destColor = vec4(p * (a * size), a);
+    }else if(mode == 2){
+        // position and param
+        destColor = vec4(normalize(p + vec3(0.0, 0.0, -1.0)), a);
+    }else if(mode == 3){
+        // position (XY scale version) and param
+        destColor = vec4(p * (a * size) * vec3(0.1, 0.1, 2.0), a);
     }
     gl_FragColor = destColor;
 }

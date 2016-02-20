@@ -695,12 +695,12 @@
         gl.bindFramebuffer(gl.FRAMEBUFFER, activeVelocityBuffer.framebuffer);
         gl3.scene_clear([0.0, 0.0, 0.0, 1.0]);
         gl3.scene_view(null, 0, 0, GPGPU_FRAMEBUFFER_SIZE, GPGPU_FRAMEBUFFER_SIZE);
-        gfPrg.push_shader([0.0, 0]);
+        gfPrg.push_shader([0.0, 2]);
         gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
         gl.bindFramebuffer(gl.FRAMEBUFFER, activePositionBuffer.framebuffer);
         gl3.scene_clear([0.0, 0.0, 0.0, 1.0]);
         gl3.scene_view(null, 0, 0, GPGPU_FRAMEBUFFER_SIZE, GPGPU_FRAMEBUFFER_SIZE);
-        gfPrg.push_shader([20.0, 1]);
+        gfPrg.push_shader([20.0, 3]);
         gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
 
         // rendering
