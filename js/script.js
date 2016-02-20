@@ -725,7 +725,7 @@
             var i;
             updater();
 
-            if(times < 100.0){
+            if(times < 300.0){
                 switch(true){
                     case times < 2.0:
                         sceneFunctions[6](0.0);
@@ -758,7 +758,7 @@
                     case times < 68.5:
                         sceneFunctions[5](61.5);
                         break;
-                    case times > 100.0:
+                    case times > 300.0:
                         run = false;
                         // ====================================================
                         // [10] gpgpu rotate (pink front back purple)
