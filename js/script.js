@@ -33,7 +33,7 @@
     var SMALL_FRAMEBUFFER_SIZE = 64;
     var FLOWER_SIZE = 2.0;
     var ALGAE_SIZE = 2.0;
-    var FLOWER_MAP_SIZE = 20.0;
+    var FLOWER_MAP_SIZE = 25.0;
     var FLOOR_SIZE = 512.0;
     var PARTICLE_FLOOR_SIZE = 32.0;
     var PARTICLE_FLOOR_WIDTH = 512.0;
@@ -867,7 +867,7 @@
             if(pointfloor){pointFloor(cameraPosition, nowTime, 10.0, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);}
             if(seaflower){seaFlower([0.0, -8.0, 0.0], [resolution, resolution], false);}
             if(seaalgae){seaAlgae([0.0, -8.0, 0.0], [resolution, resolution], false);}
-            if(wave){particleWaveRender(64.0, [0.3, 0.8, 1.0, 1.0]);}
+            if(wave){particleWaveRender(32.0, [0.3, 0.8, 1.0, 1.0]);}
         }
         function finalSceneRender(original, blur, mosaic, atan, globalColor){
             var color;
@@ -1049,7 +1049,7 @@
             gl3.mat4.multiply(pMatrix, vMatrix, particleMatrix);
             ptPrg.set_program();
             ptPrg.set_attribute(particleVBO, null);
-            ptPrg.push_shader([particleMatrix, nowTime, PARTICLE_FLOOR_WIDTH / 2.0, size, color, 1]);
+            ptPrg.push_shader([particleMatrix, nowTime * 5.0, PARTICLE_FLOOR_WIDTH / 2.0, size, color, 1]);
             gl3.draw_arrays(gl.POINTS, particlePosition.length / 3);
         }
         function defaultCameraRotate(rotationSpeed, rotationAxis){
@@ -1339,8 +1339,8 @@
             gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
 
             gpuUpdateFlag = gpgpuAnimation = false;
-            sceneRender(0.5, 5, false, false, false, true, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
-            sceneRender(0.5, 5, false, false, false, true, false, FRAMEBUFFER_SIZE, null, null);
+            sceneRender(0.5, 5, false, false, true, true, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
+            sceneRender(0.5, 5, false, false, true, true, false, FRAMEBUFFER_SIZE, null, null);
             finalSceneRender(true, true, false, false, null);
         };
 
