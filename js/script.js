@@ -739,10 +739,13 @@
                         // [5] dive to floor and white out
                         sceneFunctions[5]();
                         // ====================================================
+                        // [10] gpgpu rotate (pink front back purple)
+                        sceneFunctions[10]();
+                        // ====================================================
                         break;
                     default:
                         // @@@
-                        // [5] dive to floor
+                        // [10] gpgpu rotate
                         sceneFunctions[sceneFunctions.length - 1]();
                         break;
                 }
@@ -813,10 +816,16 @@
                     break;
                 case 3: // top to corner circle (dark red)
                     effectmode = 1;
-                    firstColor = [0.2, 0.0, 0.0, 0.5];
-                    secondColor = [0.1, 0.0, 0.0, 0.5];
+                    firstColor = [0.3, 0.0, 0.0, 0.5];
+                    secondColor = [0.1, 0.0, 0.1, 0.5];
+                    break;
+                case 4: // center to corner circle (dark purple)
+                    effectmode = 0;
+                    firstColor = [0.1, 0.0, 0.2, 0.5];
+                    secondColor = [0.3, 0.0, 0.2, 0.5];
                     break;
                 default:
+                    effectmode = 0;
                     firstColor = [0.0, 0.0, 0.0, 1.0];
                     secondColor = [1.0, 1.0, 1.0, 1.0];
                     break;
@@ -900,8 +909,8 @@
             grPrg.set_program();
             grPrg.set_attribute(gpgpuVBO, null);
             grPrg.push_shader([
-                vpMatrix, GPGPU_FRAMEBUFFER_SIZE, 16.0,
-                gpgpuPositionBuffer[activeVertexIndex].textureIndex, 0, globalColor
+                vpMatrix, GPGPU_FRAMEBUFFER_SIZE, 8.0,
+                gpgpuPositionBuffer[activeVertexIndex].textureIndex, 1, globalColor
             ]);
             gl3.draw_arrays(gl.POINTS, gpgpuIndex.length);
         }
@@ -1159,6 +1168,22 @@
             sceneRender(0.8 - j, 0, false, true, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
             sceneRender(0.8 - j, 0, false, true, false, false, false, FRAMEBUFFER_SIZE, null, null);
             finalSceneRender(true, true, false, false, null);
+        };
+        sceneFunctions[10] = function(){
+            // ----------------------------------------------------------------
+            // scene 10: gpgpu scene(gpgpu particle animation and camera move)
+            //  clearAlpha: 0.8, effectmode: 3
+            //  gpgpu: true, floor: false, flower: false, algae: false, wave: false
+            //  origin: true, blur: false, mosaic: false, atan: false
+            // ----------------------------------------------------------------
+            defaultCameraRotate();
+            gl.bindFramebuffer(gl.FRAMEBUFFER, smallBuffer.framebuffer);
+            gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
+
+            gpuUpdateFlag = gpgpuAnimation = true;
+            sceneRender(0.8, 4, true, false, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
+            sceneRender(0.8, 4, true, false, false, false, false, FRAMEBUFFER_SIZE, null, null);
+            finalSceneRender(true, false, false, false, null);
         };
 
         // @@@
