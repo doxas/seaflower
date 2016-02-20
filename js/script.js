@@ -708,6 +708,7 @@
         var aspect = 1.0;
         var soundData = [];
         var beginTime = Date.now();
+        var tempTime = 0.0;
         var nowTime = 0;
         var gpuUpdateFlag = false;
         var gpgpuAnimation = false;
@@ -741,12 +742,20 @@
                         // ====================================================
                         // [10] gpgpu rotate (pink front back purple)
                         sceneFunctions[10]();
+                        // [11] gpgpu rotate and stop motion (need a temptime defalut value === 0.0)
+                        i = Math.min(Math.max(Math.sin(nowTime), -0.8), 0.2) + 0.8;
+                        i = gl3.util.easeLiner(Math.pow(i, 2.0));
+                        tempTime += i * 0.1;
+                        sceneFunctions[11](i, tempTime);
                         // ====================================================
                         break;
                     default:
                         // @@@
-                        // [10] gpgpu rotate
-                        sceneFunctions[sceneFunctions.length - 1]();
+                        // [11] gpgpu rotate and stop motion (need a temptime defalut value === 0.0)
+                        i = Math.min(Math.max(Math.sin(nowTime), -0.8), 0.2) + 0.8;
+                        i = gl3.util.easeLiner(Math.pow(i, 2.0));
+                        tempTime += i * 0.1;
+                        sceneFunctions[sceneFunctions.length - 1](i, tempTime);
                         break;
                 }
             }else{
@@ -824,6 +833,11 @@
                     firstColor = [0.1, 0.0, 0.2, 0.5];
                     secondColor = [0.3, 0.0, 0.2, 0.5];
                     break;
+                case 5: // top to bottom gradation (dark orange to dark green)
+                    effectmode = 2;
+                    firstColor = [0.2, 0.15, 0.0, 0.5];
+                    secondColor = [0.0, 0.25, 0.0, 0.5];
+                    break;
                 default:
                     effectmode = 0;
                     firstColor = [0.0, 0.0, 0.0, 1.0];
@@ -833,7 +847,7 @@
             ePrg.push_shader([effectmode, FRAMEBUFFER_SIZE, firstColor, secondColor]);
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
         }
-        function sceneRender(alpha, effectMode, gpgpu, pointfloor, seaflower, seaalgae, wave, resolution, nowBindBuffer, nowViewport){
+        function sceneRender(alpha, effectMode, gpgpu, pointfloor, seaflower, seaalgae, wave, resolution, nowBindBuffer, nowViewport, gpgpuParam){
             if(!nowBindBuffer){
                 gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer.framebuffer);
                 gl.viewport(0, 0, FRAMEBUFFER_SIZE, FRAMEBUFFER_SIZE);
@@ -844,7 +858,7 @@
 
             if(effectMode !== null){effectRender(effectMode);}
 
-            if(gpgpu){gpgpuRender(particleTarget, 0.02, 0.15, [1.0, 0.05, 0.1, 1.0], nowBindBuffer, nowViewport);}
+            if(gpgpu){gpgpuRender(gpgpuParam, nowBindBuffer, nowViewport);}
             if(pointfloor){pointFloor(cameraPosition, nowTime, 10.0, [50.0, 1.0, 50.0], [0.3, 0.8, 1.0, 1.0]);}
             if(seaflower){seaFlower([0.0, -8.0, 0.0], [resolution, resolution], false);}
             if(seaalgae){seaAlgae([0.0, -8.0, 0.0], [resolution, resolution], false);}
@@ -900,7 +914,19 @@
             return activeVertexIndex === 0 ? 1 : 0;
         }
         // gpgpu particle render
-        function gpgpuRender(target, power, speed, globalColor, nowBindBuffer, nowViewport){
+        function gpgpuRender(param, nowBindBuffer, nowViewport){
+            var target, power, speed, globalColor;
+            if(!param){
+                target = particleTarget;
+                power = 0.02;
+                speed = 0.15;
+                globalColor = [1.0, 0.05, 0.1, 1.0];
+            }else{
+                target = param.target || particleTarget;
+                power = param.power;
+                speed = param.speed;
+                globalColor = param.globalColor;
+            }
             if(gpuUpdateFlag){
                 gpgpuUpdate(target, power, speed);
                 gl.bindFramebuffer(gl.FRAMEBUFFER, nowBindBuffer);
@@ -1093,8 +1119,7 @@
             qtn.identity(qtt);
             qtn.rotate((nowTime * 2.0) % gl3.PI2, [0.0, 1.0, 0.0], qt);
             qtn.rotate((nowTime * 2.0) % gl3.PI2, [0.707, 0.0, 0.707], qtt);
-            qtn.slerp(qt, qtt, (Math.sin(nowTime * 1.0) + 1.0) / 2.0, qt);
-            cameraPosition[2] *= 1.0;
+            qtn.slerp(qt, qtt, (Math.sin(nowTime) + 1.0) / 2.0, qt);
             qtn.toVecIII(cameraPosition, qt, cameraPosition);
             qtn.toVecIII(cameraUpDirection, qt, cameraUpDirection);
             camera = gl3.camera.create(
@@ -1171,7 +1196,7 @@
         };
         sceneFunctions[10] = function(){
             // ----------------------------------------------------------------
-            // scene 10: gpgpu scene(gpgpu particle animation and camera move)
+            // scene 10: gpgpu scene (gpgpu particle animation and camera move)
             //  clearAlpha: 0.8, effectmode: 3
             //  gpgpu: true, floor: false, flower: false, algae: false, wave: false
             //  origin: true, blur: false, mosaic: false, atan: false
@@ -1183,6 +1208,39 @@
             gpuUpdateFlag = gpgpuAnimation = true;
             sceneRender(0.8, 4, true, false, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
             sceneRender(0.8, 4, true, false, false, false, false, FRAMEBUFFER_SIZE, null, null);
+            finalSceneRender(true, false, false, false, null);
+        };
+        sceneFunctions[11] = function(power, time){
+            // ----------------------------------------------------------------
+            // scene 11: gpgpu scene (gpgpu particle move speed change and camera move)
+            //  clearAlpha: 0.8, effectmode: 2
+            //  gpgpu: true, floor: false, flower: false, algae: false, wave: false
+            //  origin: true, blur: false, mosaic: false, atan: false
+            // ----------------------------------------------------------------
+            qtn.identity(qt);
+            qtn.identity(qtt);
+            qtn.rotate(time % gl3.PI2, [0.0, 0.0, 1.0], qt);
+            qtn.rotate(time % gl3.PI2, [0.707, 0.707, 0.0], qtt);
+            qtn.slerp(qt, qtt, (Math.sin(nowTime % gl3.PI2) + 1.0) / 2.0, qt);
+            qtn.toVecIII(cameraPosition, qt, cameraPosition);
+            qtn.toVecIII(cameraUpDirection, qt, cameraUpDirection);
+            camera = gl3.camera.create(
+                cameraPosition, centerPoint, cameraUpDirection,
+                240 - time * 8.0, aspect, 5.0, 100.0
+            );
+            mat4.vpFromCamera(camera, vMatrix, pMatrix, vpMatrix);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, smallBuffer.framebuffer);
+            gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
+
+            gpuUpdateFlag = gpgpuAnimation = true;
+            var gpgpuParam = {
+                target: [0.0, 5.0, 0.0],
+                power: 0.1 * power,
+                speed: 0.5 * power,
+                globalColor: [0.3, 0.1, 1.0, 0.5]
+            };
+            sceneRender(0.2 + power, 2, true, false, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE, gpgpuParam);
+            sceneRender(0.2 + power, 2, true, false, false, false, false, FRAMEBUFFER_SIZE, null, null, gpgpuParam);
             finalSceneRender(true, false, false, false, null);
         };
 
