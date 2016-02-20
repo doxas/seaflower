@@ -1251,7 +1251,7 @@
         sceneFunctions[12] = function(){
             // ----------------------------------------------------------------
             // scene 12: gpgpu scene (move to negative Z)
-            //  clearAlpha: 0.8, effectmode: 3
+            //  clearAlpha: 0.8, effectmode: 6
             //  gpgpu: true, floor: false, flower: false, algae: false, wave: false
             //  origin: true, blur: false, mosaic: false, atan: false
             //  ※要パーティクルの初期位置検討
@@ -1285,6 +1285,62 @@
             };
             sceneRender(0.6, 6, true, false, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE, gpgpuParam);
             sceneRender(0.6, 6, true, false, false, false, false, FRAMEBUFFER_SIZE, null, null, gpgpuParam);
+            finalSceneRender(true, true, false, false, null);
+        };
+        sceneFunctions[20] = function(){
+            // ----------------------------------------------------------------
+            // scene 20: flower basic
+            //  clearAlpha: 0.5, effectmode: 2
+            //  gpgpu: false, floor: false, flower: true, algae: false, wave: false
+            //  origin: true, blur: true, mosaic: false, atan: false
+            // ----------------------------------------------------------------
+            qtn.identity(qt);
+            qtn.rotate((nowTime * 0.05) % gl3.PI2, [0.0, 1.0, 0.0], qt);
+            cameraPosition[0] = 0.0;
+            cameraPosition[1] = 3.0;
+            cameraPosition[2] = 10.0;
+            cameraUpDirection = cameraUpVector(cameraPosition, centerPoint);
+            qtn.toVecIII(cameraPosition, qt, cameraPosition);
+            qtn.toVecIII(cameraUpDirection, qt, cameraUpDirection);
+            camera = gl3.camera.create(
+                cameraPosition, centerPoint, cameraUpDirection,
+                45, aspect, 5.0, 100.0
+            );
+            mat4.vpFromCamera(camera, vMatrix, pMatrix, vpMatrix);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, smallBuffer.framebuffer);
+            gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
+
+            gpuUpdateFlag = gpgpuAnimation = false;
+            sceneRender(0.5, 2, false, false, true, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
+            sceneRender(0.5, 2, false, false, true, false, false, FRAMEBUFFER_SIZE, null, null);
+            finalSceneRender(true, true, false, false, null);
+        };
+        sceneFunctions[21] = function(){
+            // ----------------------------------------------------------------
+            // scene 21: algae basic
+            //  clearAlpha: 0.5, effectmode: 5
+            //  gpgpu: false, floor: false, flower: true, algae: false, wave: false
+            //  origin: true, blur: true, mosaic: false, atan: false
+            // ----------------------------------------------------------------
+            qtn.identity(qt);
+            qtn.rotate((nowTime * 0.05) % gl3.PI2, [0.0, 1.0, 0.0], qt);
+            cameraPosition[0] = 0.0;
+            cameraPosition[1] = 3.0;
+            cameraPosition[2] = 10.0;
+            cameraUpDirection = cameraUpVector(cameraPosition, centerPoint);
+            qtn.toVecIII(cameraPosition, qt, cameraPosition);
+            qtn.toVecIII(cameraUpDirection, qt, cameraUpDirection);
+            camera = gl3.camera.create(
+                cameraPosition, centerPoint, cameraUpDirection,
+                45, aspect, 5.0, 100.0
+            );
+            mat4.vpFromCamera(camera, vMatrix, pMatrix, vpMatrix);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, smallBuffer.framebuffer);
+            gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
+
+            gpuUpdateFlag = gpgpuAnimation = false;
+            sceneRender(0.5, 5, false, false, false, true, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
+            sceneRender(0.5, 5, false, false, false, true, false, FRAMEBUFFER_SIZE, null, null);
             finalSceneRender(true, true, false, false, null);
         };
 
