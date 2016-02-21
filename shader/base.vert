@@ -15,7 +15,7 @@ uniform vec4 globalColor;
 varying vec4 vColor;
 varying float vFog;
 varying float vLight;
-const float start = 0.0;
+const float start = -10.0;
 const float end = 80.0;
 #define PI 3.14159265358
 #define DEG 1.5707963267

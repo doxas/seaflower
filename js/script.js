@@ -33,7 +33,7 @@
     var SMALL_FRAMEBUFFER_SIZE = 64;
     var FLOWER_SIZE = 2.0;
     var ALGAE_SIZE = 2.0;
-    var FLOWER_MAP_SIZE = 25.0;
+    var FLOWER_MAP_SIZE = 20.0;
     var FLOOR_SIZE = 512.0;
     var PARTICLE_FLOOR_SIZE = 32.0;
     var PARTICLE_FLOOR_WIDTH = 512.0;
@@ -197,7 +197,7 @@
 
     function soundLoader(){
         gl3.audio.init(0.5, 0.5);
-        gl3.audio.load('snd/background.mp3', 0, true, true, soundLoadCheck);
+        gl3.audio.load('snd/bgm.mp3', 0, true, true, soundLoadCheck);
         gl3.audio.load('snd/sound.mp3', 1, false, false, soundLoadCheck);
 
         function soundLoadCheck(){
@@ -691,18 +691,19 @@
         gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
 
         // gpgpu texture
-        gfPrg.set_program();
-        gfPrg.set_attribute(planeVBO, planeIBO);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, activeVelocityBuffer.framebuffer);
-        gl3.scene_clear([0.0, 0.0, 0.0, 1.0]);
-        gl3.scene_view(null, 0, 0, GPGPU_FRAMEBUFFER_SIZE, GPGPU_FRAMEBUFFER_SIZE);
-        gfPrg.push_shader([0.0, 2]);
-        gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, activePositionBuffer.framebuffer);
-        gl3.scene_clear([0.0, 0.0, 0.0, 1.0]);
-        gl3.scene_view(null, 0, 0, GPGPU_FRAMEBUFFER_SIZE, GPGPU_FRAMEBUFFER_SIZE);
-        gfPrg.push_shader([20.0, 3]);
-        gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+        gpgpuResetTexture(0);
+        // gfPrg.set_program();
+        // gfPrg.set_attribute(planeVBO, planeIBO);
+        // gl.bindFramebuffer(gl.FRAMEBUFFER, activeVelocityBuffer.framebuffer);
+        // gl3.scene_clear([0.0, 0.0, 0.0, 1.0]);
+        // gl3.scene_view(null, 0, 0, GPGPU_FRAMEBUFFER_SIZE, GPGPU_FRAMEBUFFER_SIZE);
+        // gfPrg.push_shader([0.0, 2]);
+        // gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+        // gl.bindFramebuffer(gl.FRAMEBUFFER, activePositionBuffer.framebuffer);
+        // gl3.scene_clear([0.0, 0.0, 0.0, 1.0]);
+        // gl3.scene_view(null, 0, 0, GPGPU_FRAMEBUFFER_SIZE, GPGPU_FRAMEBUFFER_SIZE);
+        // gfPrg.push_shader([20.0, 3]);
+        // gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
 
         // rendering
         var count = 0;
@@ -718,7 +719,7 @@
         var camera;
         var particleTarget = [];
         var sceneFunctions = [];
-        // setTimeout(function(){gl3.audio.src[0].play();}, 2000);
+        setTimeout(function(){gl3.audio.src[0].play();}, 2000);
 
         // rendering loop
         function render(){
@@ -759,44 +760,58 @@
                         sceneFunctions[5](61.5);
                         break;
                 }
-            }else if(times < 93.5){
-                switch(true){
-                    default:
-                        break;
-                }
             }else if(times < 129.65){
                 switch(true){
-                    default:
+                    case times < 71.0:
+                        sceneFunctions[10]();
+                        clearRender(null, [1.0, 1.0, 1.0, 1.0 - (times - 68.5) / 2.5]);
+                        break;
+                    case times < 91.0:
+                        sceneFunctions[10]();
+                        break;
+                    case times < 113.05:
+                        i = Math.min(Math.max(Math.sin(times - 91.0), -0.8), 0.2) + 0.8;
+                        i = gl3.util.easeLiner(Math.pow(i, 2.0));
+                        tempTime += i * 0.1;
+                        sceneFunctions[11](i, tempTime);
+                        break;
+                    case times < 120.5:
+                        sceneFunctions[22]();
+                        break;
+                    case times < 129.65:
+                        sceneFunctions[23]();
                         break;
                 }
-            }else if(times < 162.8){
+            }else if(times < 162.65){
                 switch(true){
-                    default:
+                    case times < 137.67:
+                        sceneFunctions[3](); // temp
+                        break;
+                    case times < 146.225:
+                        sceneFunctions[20]();
+                        break;
+                    case times < 154.225:
+                        sceneFunctions[21]();
+                        break;
+                    case times < 162.65:
+                        sceneFunctions[10]();
                         break;
                 }
             }else{
                 switch(true){
-                    case times >= 200.0:
-                        // @@@
-                        // [0]
-                        sceneFunctions[sceneFunctions.length - 1]();
+                    case times < 186.75:
+                        sceneFunctions[4](); // tmp
+                        break;
+                    case times < 196.75:
+                        sceneFunctions[3]();
+                        break;
+                    case times < 208.0:
+                        sceneFunctions[4]();
                         break;
                     default:
                         run = false;
-                        // ====================================================
-                        // [10] gpgpu rotate (pink front back purple)
-                        sceneFunctions[10]();
-                        // [11] gpgpu rotate and stop motion (need a temptime defalut value === 0.0)
-                        i = Math.min(Math.max(Math.sin(times), -0.8), 0.2) + 0.8;
-                        i = gl3.util.easeLiner(Math.pow(i, 2.0));
-                        tempTime += i * 0.1;
-                        sceneFunctions[11](i, tempTime);
-                        // ====================================================
-                        // [20] flower basic
-                        sceneFunctions[20]();
-                        // [21] flower basic
-                        sceneFunctions[21]();
-                        // ====================================================
+                        // @@@
+                        sceneFunctions[sceneFunctions.length - 1]();
                         break;
                 }
             }
@@ -809,7 +824,7 @@
         function updater(){
             var i;
             count++;
-            times = (Date.now() - beginTime) / 1000 + 200.0;
+            times = (Date.now() - beginTime) / 1000;
             gpuUpdateFlag = false;
             gpgpuAnimation = false;
             gl3.audio.src[0].update = true;
@@ -833,8 +848,9 @@
             cameraUpDirection[2] = DEFAULT_CAM_UP[2];
         }
         // scene clear
-        function clearRender(alpha){
+        function clearRender(alpha, customColor){
             var clearColor = [0.0, 0.0, 0.0, alpha];
+            if(customColor){clearColor = customColor;}
             lPrg.set_program();
             lPrg.set_attribute(planeVBO, planeIBO);
             lPrg.push_shader([clearColor]);
@@ -894,6 +910,20 @@
                     break;
             }
             ePrg.push_shader([effectmode, FRAMEBUFFER_SIZE, firstColor, secondColor]);
+            gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+        }
+        function gpgpuResetTexture(mode){
+            gfPrg.set_program();
+            gfPrg.set_attribute(planeVBO, planeIBO);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, activeVelocityBuffer.framebuffer);
+            gl3.scene_clear([0.0, 0.0, 0.0, 1.0]);
+            gl3.scene_view(null, 0, 0, GPGPU_FRAMEBUFFER_SIZE, GPGPU_FRAMEBUFFER_SIZE);
+            gfPrg.push_shader([0.0, mode]);
+            gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, activePositionBuffer.framebuffer);
+            gl3.scene_clear([0.0, 0.0, 0.0, 1.0]);
+            gl3.scene_view(null, 0, 0, GPGPU_FRAMEBUFFER_SIZE, GPGPU_FRAMEBUFFER_SIZE);
+            gfPrg.push_shader([20.0, mode + 1.0]);
             gl3.draw_elements(gl.TRIANGLES, planeIndex.length);
         }
         function sceneRender(alpha, effectMode, gpgpu, pointfloor, seaflower, seaalgae, wave, resolution, nowBindBuffer, nowViewport, gpgpuParam, floorParam, flowerParam){
@@ -1228,7 +1258,7 @@
             t = times - offsetTime;
             qtn.identity(qt);
             qtn.identity(qtt);
-            qtn.rotate(t % gl3.PI2, [0.0, 1.0, 0.0], qt);
+            qtn.rotate(t % gl3.PI2, [0.0, -1.0, 0.0], qt);
             qtn.rotate(gl3.PI2 + gl3.PIH / 2.0, [1.0, 0.0, 0.0], qtt);
             qtn.slerp(qt, qtt, gl3.util.easeOutCubic(Math.min(t * 0.2, 1.0)), qt);
             j = 0.0;
@@ -1287,7 +1317,7 @@
             qtn.identity(qt);
             qtn.rotate((times * 2.5) % gl3.PI2, [0.0, -1.0, 0.0], qtt);
             var s = Math.cos((times * 1.5) % gl3.PI2) + 1.0;
-            cameraPosition[1] -= s * 10.0;
+            cameraPosition[1] -= s * 12.0;
             qtn.toVecIII(cameraPosition, qt, cameraPosition);
             qtn.toVecIII(cameraUpDirection, qt, cameraUpDirection);
             camera = gl3.camera.create(
@@ -1334,7 +1364,7 @@
         sceneFunctions[10] = function(){
             // ----------------------------------------------------------------
             // scene 10: gpgpu scene (gpgpu particle animation and camera move)
-            //  clearAlpha: 0.8, effectmode: 3
+            //  clearAlpha: 0.8, effectmode: 4
             //  gpgpu: true, floor: false, flower: false, algae: false, wave: false
             //  origin: true, blur: false, mosaic: false, atan: false
             // ----------------------------------------------------------------
@@ -1417,6 +1447,22 @@
             };
             sceneRender(0.6, 6, true, false, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE, gpgpuParam);
             sceneRender(0.6, 6, true, false, false, false, false, FRAMEBUFFER_SIZE, null, null, gpgpuParam);
+            finalSceneRender(true, true, false, false, null);
+        };
+        sceneFunctions[13] = function(){
+            // ----------------------------------------------------------------
+            // scene 13: gpgpu scene (gpgpu particle animation and camera move)
+            //  clearAlpha: 0.4, effectmode: 4
+            //  gpgpu: true, floor: false, flower: false, algae: false, wave: false
+            //  origin: true, blur: false, mosaic: false, atan: false
+            // ----------------------------------------------------------------
+            defaultCameraRotate();
+            gl.bindFramebuffer(gl.FRAMEBUFFER, smallBuffer.framebuffer);
+            gl.viewport(0, 0, SMALL_FRAMEBUFFER_SIZE, SMALL_FRAMEBUFFER_SIZE);
+
+            gpuUpdateFlag = gpgpuAnimation = true;
+            sceneRender(0.4, 4, true, false, false, false, false, SMALL_FRAMEBUFFER_SIZE, smallBuffer.framebuffer, SMALL_FRAMEBUFFER_SIZE);
+            sceneRender(0.4, 4, true, false, false, false, false, FRAMEBUFFER_SIZE, null, null);
             finalSceneRender(true, true, false, false, null);
         };
         sceneFunctions[20] = function(){
