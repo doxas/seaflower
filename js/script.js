@@ -197,14 +197,7 @@
 
     function soundLoader(){
         gl3.audio.init(0.5, 0.5);
-        gl3.audio.load('snd/bgm.mp3', 0, true, true, soundLoadCheck);
-        gl3.audio.load('snd/sound.mp3', 1, false, false, soundLoadCheck);
-
-        function soundLoadCheck(){
-            if(gl3.audio.loadComplete()){
-                shaderLoader();
-            }
-        }
+        gl3.audio.load('snd/bgm.mp3', 0, false, true, shaderLoader);
     }
 
     function shaderLoader(){
@@ -760,7 +753,7 @@
                         sceneFunctions[5](61.5);
                         break;
                 }
-            }else if(times < 129.65){
+            }else if(times < 129.0){
                 switch(true){
                     case times < 71.0:
                         sceneFunctions[10]();
@@ -769,7 +762,7 @@
                     case times < 91.0:
                         sceneFunctions[10]();
                         break;
-                    case times < 113.05:
+                    case times < 112.25:
                         i = Math.min(Math.max(Math.sin(times - 91.0), -0.8), 0.2) + 0.8;
                         i = gl3.util.easeLiner(Math.pow(i, 2.0));
                         tempTime += i * 0.1;
@@ -778,11 +771,11 @@
                     case times < 120.5:
                         sceneFunctions[22]();
                         break;
-                    case times < 129.65:
+                    case times < 129.0:
                         sceneFunctions[23]();
                         break;
                 }
-            }else if(times < 162.65){
+            }else if(times < 162.75){
                 switch(true){
                     case times < 137.67:
                         sceneFunctions[3](); // temp
@@ -793,7 +786,7 @@
                     case times < 154.225:
                         sceneFunctions[21]();
                         break;
-                    case times < 162.65:
+                    case times < 162.75:
                         sceneFunctions[10]();
                         break;
                 }
@@ -802,16 +795,22 @@
                     case times < 186.75:
                         sceneFunctions[4](); // tmp
                         break;
-                    case times < 196.75:
+                    case times < 195.5:
                         sceneFunctions[3]();
+                        break;
+                    case times < 200.0:
+                        sceneFunctions[4]();
                         break;
                     case times < 208.0:
                         sceneFunctions[4]();
+                        clearRender(null, [0.0, 0.0, 0.0, (times - 208.0) / 8.0]);
+                        break;
+                    case times < 209.0:
+                        sceneFunctions[4]();
+                        clearRender(null, [0.0, 0.0, 0.0, 1.0]);
                         break;
                     default:
                         run = false;
-                        // @@@
-                        sceneFunctions[sceneFunctions.length - 1]();
                         break;
                 }
             }
