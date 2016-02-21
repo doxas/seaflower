@@ -28,7 +28,7 @@
     var DEFAULT_CAM_POSITION = [0.0, 15.0, 20.0];
     var DEFAULT_CAM_CENTER   = [0.0, 0.0, 0.0];
     var DEFAULT_CAM_UP       = cameraUpVector(DEFAULT_CAM_POSITION, DEFAULT_CAM_CENTER);
-    var FRAMEBUFFER_SIZE = 512;
+    var FRAMEBUFFER_SIZE = 1024;
     var GPGPU_FRAMEBUFFER_SIZE = 256;
     var SMALL_FRAMEBUFFER_SIZE = 64;
     var FLOWER_SIZE = 2.0;
@@ -803,7 +803,7 @@
                         break;
                     case times < 208.0:
                         sceneFunctions[4]();
-                        clearRender(null, [0.0, 0.0, 0.0, (times - 208.0) / 8.0]);
+                        clearRender(null, [0.0, 0.0, 0.0, (times - 200.0) / 8.0]);
                         break;
                     case times < 209.0:
                         sceneFunctions[4]();
